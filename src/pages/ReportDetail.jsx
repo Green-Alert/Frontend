@@ -5,6 +5,7 @@ import {
   AlertTriangle, Waves, ArrowLeft, MapPin, Calendar, Eye,
   User, ShieldCheck, ImageOff,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { getReporteById } from '../services/api';
 import { helpers } from '../constants/categorias';
 
@@ -128,133 +129,180 @@ export default function ReportDetail() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
-      {/* Back */}
+    <motion.div
+      className="max-w-4xl mx-auto px-4 sm:px-6 py-10"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: 'easeOut' }}
+    >
+      {/* Sticky back — mobile only */}
+      <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-gray-950/80 backdrop-blur-md border-b border-gray-800/60 flex items-center lg:hidden mb-4">
+        <button
+          onClick={() => navigate('/reports')}
+          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Volver
+        </button>
+      </div>
+
+      {/* Desktop back */}
       <button
         onClick={() => navigate('/reports')}
-        className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-6"
+        className="hidden lg:flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
         Volver a Reportes
       </button>
 
-      <div className="card flex flex-col gap-6">
-        {/* Header: category + badges */}
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm font-medium" style={{ color: catColor }}>
-            <Icon className="w-5 h-5 shrink-0" />
-            <span>{catNombre}</span>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`badge ${severityClass[report.nivel_severidad]}`}>
-              {severityLabel[report.nivel_severidad] ?? report.nivel_severidad}
-            </span>
-            <span className={`badge ${statusClass[report.estado]}`}>
-              {statusLabel[report.estado] ?? report.estado}
-            </span>
-          </div>
-        </div>
+      <div className="card overflow-hidden flex flex-col gap-0 !p-0">
+        {/* Color banner */}
+        <div className="h-1.5 w-full shrink-0" style={{ background: catColor }} />
 
-        {/* Title */}
-        <div className="border-b border-gray-800 pb-5">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white leading-snug">{report.titulo}</h1>
-        </div>
-
-        {/* Layout tipo Wikipedia: descripción izquierda + imágenes derecha */}
-        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_280px] lg:items-start">
-          {/* Izquierda: descripción */}
-          <div className="order-2 lg:order-none">
-            {report.descripcion ? (
-              <p className="text-gray-300 leading-relaxed text-base">{report.descripcion}</p>
-            ) : (
-              <p className="text-gray-500 italic text-sm">Sin descripción proporcionada.</p>
-            )}
+        <div className="flex flex-col gap-6 p-6 sm:p-8">
+          {/* Header */}
+          <div className="flex flex-wrap items-start gap-4 justify-between">
+            <div className="flex items-start gap-3 min-w-0">
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                style={{ backgroundColor: catColor + '20', border: `1.5px solid ${catColor}55` }}
+              >
+                <Icon className="w-5 h-5" style={{ color: catColor }} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: catColor }}>
+                  {catNombre}
+                </p>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white leading-snug">{report.titulo}</h1>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              <span className={`badge ${severityClass[report.nivel_severidad]}`}>
+                {severityLabel[report.nivel_severidad] ?? report.nivel_severidad}
+              </span>
+              <span className={`badge ${statusClass[report.estado]}`}>
+                {statusLabel[report.estado] ?? report.estado}
+              </span>
+            </div>
           </div>
 
-          {/* Derecha: evidencias (en móvil aparecen primero) */}
+          {/* Description */}
+          {report.descripcion ? (
+            <p className="text-gray-300 leading-relaxed text-base text-justify">
+              {report.descripcion}
+            </p>
+          ) : (
+            <p className="text-gray-500 italic text-sm">Sin descripción proporcionada.</p>
+          )}
+
+          {/* Evidence gallery */}
           {imageEvidencias.length > 0 && (
-            <div className="order-first lg:order-none rounded-xl border border-gray-700 bg-gray-800/40 p-4 space-y-3">
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">
+            <div>
+              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-3">
                 Evidencias ({imageEvidencias.length})
               </p>
-              <div className="space-y-3">
+              <div className={`grid gap-3 ${
+                imageEvidencias.length === 1
+                  ? 'grid-cols-1 max-w-sm'
+                  : 'grid-cols-2 sm:grid-cols-3'
+              }`}>
                 {imageEvidencias.map((ev) => (
                   <ImageCard key={ev.id_evidencia} ev={ev} />
                 ))}
               </div>
             </div>
           )}
-        </div>
 
-        {/* Meta grid */}
-        <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-gray-800 text-sm">
-
-          {/* Location */}
-          {location && (
-            <div className="flex items-start gap-2">
-              <MapPin className="w-4 h-4 mt-0.5 text-green-400 shrink-0" />
+          {/* OpenStreetMap iframe */}
+          {report.latitud && report.longitud && (() => {
+            const lat = parseFloat(report.latitud);
+            const lon = parseFloat(report.longitud);
+            const delta = 0.01;
+            const bbox = `${lon - delta},${lat - delta},${lon + delta},${lat + delta}`;
+            return (
               <div>
-                <p className="text-gray-500 text-xs mb-0.5">Ubicación</p>
-                <p className="text-gray-200">{location}</p>
-                {report.direccion && location !== report.direccion && (
-                  <p className="text-gray-500 text-xs mt-0.5">{report.direccion}</p>
-                )}
+                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" /> Ubicación en el mapa
+                </p>
+                <div className="rounded-xl overflow-hidden border border-gray-700 h-64">
+                  <iframe
+                    title="Ubicación del reporte"
+                    width="100%"
+                    height="100%"
+                    loading="lazy"
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lon}`}
+                    className="block"
+                  />
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Meta grid */}
+          <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-gray-800 text-sm">
+            {location && (
+              <div className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 mt-0.5 text-green-400 shrink-0" />
+                <div>
+                  <p className="text-gray-500 text-xs mb-0.5">Ubicación</p>
+                  <p className="text-gray-200">{location}</p>
+                  {report.direccion && location !== report.direccion && (
+                    <p className="text-gray-500 text-xs mt-0.5">{report.direccion}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {report.latitud && report.longitud && (
+              <div className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 mt-0.5 text-gray-600 shrink-0" />
+                <div>
+                  <p className="text-gray-500 text-xs mb-0.5">Coordenadas</p>
+                  <p className="text-gray-400 font-mono text-xs">
+                    {parseFloat(report.latitud).toFixed(6)}, {parseFloat(report.longitud).toFixed(6)}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-start gap-2">
+              <Calendar className="w-4 h-4 mt-0.5 text-green-400 shrink-0" />
+              <div>
+                <p className="text-gray-500 text-xs mb-0.5">Registrado</p>
+                <p className="text-gray-200">{formatDate(report.created_at)}</p>
               </div>
             </div>
-          )}
 
-          {/* Coordinates */}
-          {report.latitud && report.longitud && (
-            <div className="flex items-start gap-2">
-              <MapPin className="w-4 h-4 mt-0.5 text-gray-600 shrink-0" />
+            <div className="flex items-center gap-1.5 text-gray-400">
+              <Eye className="w-4 h-4 text-gray-500" />
+              <span className="text-gray-300">{report.vistas ?? 0}</span>
+              <span className="text-xs text-gray-500">vistas</span>
+            </div>
+          </div>
+
+          {/* Autor */}
+          {autor && (
+            <div className="flex items-center gap-3 pt-4 border-t border-gray-800">
+              <div className="w-9 h-9 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center overflow-hidden shrink-0">
+                {autor.avatar_url
+                  ? <img src={autor.avatar_url} alt={autor.nombre} className="w-full h-full object-cover" />
+                  : <User className="w-4 h-4 text-green-400" />}
+              </div>
               <div>
-                <p className="text-gray-500 text-xs mb-0.5">Coordenadas</p>
-                <p className="text-gray-400 font-mono text-xs">
-                  {parseFloat(report.latitud).toFixed(6)}, {parseFloat(report.longitud).toFixed(6)}
+                <p className="text-sm text-gray-200 font-medium">
+                  {autor.nombre} {autor.apellido}
+                </p>
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  {(autor.rol === 'moderador' || autor.rol === 'admin') && (
+                    <ShieldCheck className="w-3 h-3 text-blue-400" />
+                  )}
+                  {rolLabel[autor.rol] ?? autor.rol}
                 </p>
               </div>
             </div>
           )}
-
-          {/* Date */}
-          <div className="flex items-start gap-2">
-            <Calendar className="w-4 h-4 mt-0.5 text-green-400 shrink-0" />
-            <div>
-              <p className="text-gray-500 text-xs mb-0.5">Registrado</p>
-              <p className="text-gray-200">{formatDate(report.created_at)}</p>
-            </div>
-          </div>
-
-          {/* Views */}
-          <div className="flex items-center gap-1.5 text-gray-400">
-            <Eye className="w-4 h-4 text-gray-500" />
-            <span className="text-gray-300">{report.vistas ?? 0}</span>
-            <span className="text-xs text-gray-500">vistas</span>
-          </div>
         </div>
-
-        {/* Autor */}
-        {autor && (
-          <div className="flex items-center gap-3 pt-4 border-t border-gray-800">
-            <div className="w-9 h-9 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center overflow-hidden shrink-0">
-              {autor.avatar_url
-                ? <img src={autor.avatar_url} alt={autor.nombre} className="w-full h-full object-cover" />
-                : <User className="w-4 h-4 text-green-400" />}
-            </div>
-            <div>
-              <p className="text-sm text-gray-200 font-medium">
-                {autor.nombre} {autor.apellido}
-              </p>
-              <p className="text-xs text-gray-500 flex items-center gap-1">
-                {(autor.rol === 'moderador' || autor.rol === 'admin') && (
-                  <ShieldCheck className="w-3 h-3 text-blue-400" />
-                )}
-                {rolLabel[autor.rol] ?? autor.rol}
-              </p>
-            </div>
-          </div>
-        )}
       </div>
-    </div>
+    </motion.div>
   );
 }

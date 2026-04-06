@@ -4,9 +4,10 @@ import { UserCircle, Settings as SettingsIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const navItems = [
-  { to: '/', label: 'Inicio', end: true },
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/reports', label: 'Reportes' },
+  { to: '/', label: 'Inicio', end: true, guestOnly: true },
+  { to: '/dashboard', label: 'Página Principal', authOnly: true },
+  { to: '/reports', label: 'Reportes', authOnly: true },
+  { to: '/about', label: 'About' },
 ];
 
 const rolLabel = { ciudadano: 'Ciudadano', moderador: 'Moderador', admin: 'Admin' };
@@ -43,11 +44,13 @@ export default function Navbar() {
 
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-7">
-          {navItems.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
-              {item.label}
-            </NavLink>
-          ))}
+          {navItems
+            .filter((item) => !(item.guestOnly && user) && !(item.authOnly && !user))
+            .map((item) => (
+              <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
+                {item.label}
+              </NavLink>
+            ))}
         </div>
 
         {/* Desktop: acciones */}
@@ -140,17 +143,19 @@ export default function Navbar() {
       {/* Mobile menu */}
       {open && (
         <div className="md:hidden border-t border-gray-800 bg-gray-950 px-4 py-4 flex flex-col gap-4">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={linkClass}
-              onClick={() => setOpen(false)}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          {navItems
+            .filter((item) => !(item.guestOnly && user) && !(item.authOnly && !user))
+            .map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={linkClass}
+                onClick={() => setOpen(false)}
+              >
+                {item.label}
+              </NavLink>
+            ))}
 
           {user ? (
             <>

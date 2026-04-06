@@ -23,3 +23,13 @@
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
   }
 }
+
+/* prefers-reduced-motion: desactiva todas las animaciones/transiciones */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

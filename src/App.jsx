@@ -1,10 +1,12 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import ToastContainer from './components/ToastContainer';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import { useAuth } from './context/AuthContext';
 import Home from './pages/Home';
+import About from './pages/About';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -16,6 +18,11 @@ import FormularioReporte from './components/FormularioReporte';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 
+function HomeRoute() {
+  const { user } = useAuth();
+  return user ? <Navigate to="/dashboard" replace /> : <Home />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -24,7 +31,8 @@ export default function App() {
           <Routes>
             {/* Rutas públicas con Layout */}
             <Route path="/" element={<Layout />}>
-              <Route index element={<Home />} />
+              <Route index element={<HomeRoute />} />
+              <Route path="about" element={<About />} />
             </Route>
 
             {/* Rutas de autenticación (sin Layout, pantalla completa) */}

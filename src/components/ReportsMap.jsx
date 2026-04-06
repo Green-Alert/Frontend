@@ -1,5 +1,6 @@
-﻿import { useEffect } from 'react';
+﻿import { memo, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { helpers } from '../constants/categorias';
@@ -42,17 +43,29 @@ const estadoLabel = {
 
 function FitBounds({ points }) {
   const map = useMap();
+  const hasFit = useRef(false);
   useEffect(() => {
-    if (points.length > 0) {
-      const bounds = L.latLngBounds(points.map((p) => [parseFloat(p.latitud), parseFloat(p.longitud)]));
-      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
-    }
+    if (hasFit.current || points.length === 0) return;
+    const bounds = L.latLngBounds(points.map((p) => [parseFloat(p.latitud), parseFloat(p.longitud)]));
+    map.fitBounds(bounds, { padding: [60, 60] });
+    hasFit.current = true;
   }, [points, map]);
   return null;
 }
 
-export default function ReportsMap({ reports = [] }) {
+export default memo(function ReportsMap({ reports = [] }) {
   const withCoords = reports.filter((r) => r.latitud && r.longitud);
+
+  if (withCoords.length === 0) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center bg-gray-900/60 rounded-xl border border-gray-800 gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+        </svg>
+        <p className="text-sm text-gray-500">No hay reportes con ubicación disponible</p>
+      </div>
+    );
+  }
 
   return (
     <MapContainer
@@ -67,7 +80,8 @@ export default function ReportsMap({ reports = [] }) {
       />
       <FitBounds points={withCoords} />
 
-      {withCoords.map((r) => {
+      <MarkerClusterGroup chunkedLoading>
+        {withCoords.map((r) => {
         const cfg   = helpers.obtenerConfig(r.tipo_contaminacion);
         const color = cfg?.color ?? severityColors[r.nivel_severidad] ?? '#94a3b8';
         const svSt  = severityStyle[r.nivel_severidad] ?? { background: '#1f2937', color: '#9ca3af' };
@@ -131,6 +145,7 @@ export default function ReportsMap({ reports = [] }) {
           </Marker>
         );
       })}
+      </MarkerClusterGroup>
     </MapContainer>
   );
-}
+});

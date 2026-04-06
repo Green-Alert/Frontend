@@ -1,10 +1,11 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, useRef, lazy, Suspense } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Paperclip, AlertCircle, Info,
   Trees, Flame, AlertTriangle, Waves,
   Droplet, Wind, Leaf, Volume2, Trash2, Lightbulb, HelpCircle,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { createReporte } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import {
@@ -78,6 +79,10 @@ export default function FormularioReporte() {
   });
 
   const set = (key, val) => setForm(p => ({ ...p, [key]: val }));
+
+  const stepDir = useRef(1);
+  const goNext = () => { stepDir.current = 1;  setStep(s => s + 1); };
+  const goPrev = () => { stepDir.current = -1; setStep(s => s - 1); };
 
   // Derivados del estado del formulario
   const catConfig   = form.tipo_contaminacion ? helpers.obtenerConfig(form.tipo_contaminacion) : null;
@@ -213,7 +218,21 @@ export default function FormularioReporte() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="card">
+        <div className="card overflow-hidden">
+          <AnimatePresence mode="wait" custom={stepDir.current}>
+            <motion.div
+              key={step}
+              custom={stepDir.current}
+              variants={{
+                enter:  (d) => ({ opacity: 0, x: d * 28 }),
+                center: { opacity: 1, x: 0 },
+                exit:   (d) => ({ opacity: 0, x: d * -28 }),
+              }}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+            >
 
           {/* ── Paso 0: Categoría ──────────────────────────────────────────── */}
           {step === 0 && (
@@ -585,13 +604,15 @@ export default function FormularioReporte() {
               </div>
             </div>
           )}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {/* Navegación entre pasos */}
         <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-between gap-3">
           <button
             type="button"
-            onClick={() => setStep(s => s - 1)}
+            onClick={goPrev}
             disabled={step === 0}
             className="btn-secondary disabled:opacity-30 disabled:cursor-not-allowed w-full sm:w-auto"
           >
@@ -601,7 +622,7 @@ export default function FormularioReporte() {
           {step < STEPS.length - 1 ? (
             <button
               type="button"
-              onClick={() => setStep(s => s + 1)}
+              onClick={goNext}
               disabled={!canNext()}
               className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto"
             >

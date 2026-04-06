@@ -45,7 +45,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('ga_token');
     localStorage.removeItem('ga_user');
     setUser(null);
-    showToast('Sesión cerrada', 'info');
+    showToast('Sesión cerrada', 'info', 3500, { position: 'top-center', subtitle: 'Hasta pronto' });
   };
 
   return (
