@@ -5,9 +5,13 @@ const ToastContext = createContext(null);
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
-  const showToast = useCallback((message, type = 'info', duration = 3000) => {
+  // showToast(message, type?, duration?, options?)
+  // options: { position?: 'bottom-right' | 'top-center', subtitle?: string }
+  const showToast = useCallback((message, type = 'info', duration = 3000, options = {}) => {
     const id = crypto.randomUUID();
-    setToasts((prev) => [...prev, { id, message, type, duration }]);
+    const position = options.position ?? 'bottom-right';
+    const subtitle  = options.subtitle ?? null;
+    setToasts((prev) => [...prev, { id, message, type, duration, position, subtitle }]);
   }, []);
 
   const removeToast = useCallback((id) => {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   User, Mail, Phone, Calendar, ShieldCheck, Pencil, Lock,
   X, Eye, EyeOff, Check, Camera, ChevronDown, ChevronUp,
@@ -125,6 +126,7 @@ export default function Profile() {
   // ── Edición inline ────────────────────────────────────────────────────────
   const [editing,    setEditing]    = useState(false);
   const [saving,     setSaving]     = useState(false);
+  const [saved,      setSaved]      = useState(false);
   const [editForm,   setEditForm]   = useState({ nombre: '', apellido: '', telefono: '' });
   const [editErrors, setEditErrors] = useState({});
 
@@ -178,6 +180,8 @@ export default function Profile() {
       setPerfil(data.data.usuario);
       setEditing(false);
       setEditErrors({});
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2200);
       showToast('Perfil actualizado correctamente.', 'success');
     } catch (err) {
       showToast(err.response?.data?.message || 'Error al actualizar el perfil.', 'error');
@@ -327,12 +331,42 @@ export default function Profile() {
                     <User size={16} className="text-green-400" /> Información personal
                   </h2>
                   {!editing ? (
-                    <button
-                      onClick={() => setEditing(true)}
-                      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-green-400 transition-colors border border-gray-700 hover:border-green-500/50 rounded-lg px-3 py-1.5"
-                    >
-                      <Pencil size={12} /> Editar
-                    </button>
+                  <AnimatePresence mode="wait">
+                    {saved ? (
+                      <motion.div
+                        key="saved"
+                        initial={{ opacity: 0, scale: 0.85 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.85 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex items-center gap-1.5 text-xs text-green-400"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <motion.path
+                            d="M2.5 7L5.5 10L11.5 4"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            initial={{ pathLength: 0 }}
+                            animate={{ pathLength: 1 }}
+                            transition={{ duration: 0.35, ease: 'easeOut' }}
+                          />
+                        </svg>
+                        Guardado
+                      </motion.div>
+                    ) : (
+                      <motion.button
+                        key="edit"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setEditing(true)}
+                        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-green-400 transition-colors border border-gray-700 hover:border-green-500/50 rounded-lg px-3 py-1.5"
+                      >
+                        <Pencil size={12} /> Editar
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
                   ) : (
                     <div className="flex gap-2">
                       <button
@@ -418,8 +452,16 @@ export default function Profile() {
                 {pwOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
               </button>
 
-              {pwOpen && (
-                <form onSubmit={handleChangePw} className="mt-5 space-y-4 border-t border-gray-800 pt-5">
+              <AnimatePresence>
+                {pwOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <form onSubmit={handleChangePw} className="mt-5 space-y-4 border-t border-gray-800 pt-5">
                   <PwField
                     label="Contraseña actual *"
                     value={pwForm.actual}
@@ -455,8 +497,10 @@ export default function Profile() {
                   >
                     {pwSaving ? 'Actualizando...' : 'Actualizar contraseña'}
                   </button>
-                </form>
-              )}
+                    </form>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
 

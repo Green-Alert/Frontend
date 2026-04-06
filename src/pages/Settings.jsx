@@ -7,13 +7,14 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { motion, AnimatePresence } from 'motion/react';
 
 // ── Sidebar nav items ─────────────────────────────────────────────────────────
 const NAV = [
   { key: 'notificaciones', label: 'Notificaciones', icon: Bell },
   { key: 'privacidad',     label: 'Privacidad',     icon: ShieldCheck },
   { key: 'cuenta',         label: 'Cuenta',         icon: User },
-  { key: 'peligro',        label: 'Zona peligrosa', icon: AlertTriangle },
+  { key: 'peligro',        label: 'Opciones de cuenta', icon: AlertTriangle },
 ];
 
 // ── Modal de confirmación ─────────────────────────────────────────────────────
@@ -55,7 +56,11 @@ function NotifRow({ icon: Icon, label, description, checked, onChange }) {
       <div className="relative shrink-0">
         <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only" />
         <div className={`w-10 h-5 rounded-full transition-colors duration-200 ${checked ? 'bg-green-500' : 'bg-gray-700'}`}>
-          <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${checked ? 'translate-x-5' : ''}`} />
+          <motion.div
+            className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow"
+            animate={{ x: checked ? 20 : 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+          />
         </div>
       </div>
     </label>
@@ -231,11 +236,30 @@ export default function Settings() {
                 >
                   {savingNotifs ? 'Guardando...' : 'Guardar preferencias'}
                 </button>
-                {savedNotifs && (
-                  <span className="flex items-center gap-1.5 text-xs text-green-400 animate-fade-in">
-                    <Check size={12} /> Guardado
-                  </span>
-                )}
+                <AnimatePresence>
+                  {savedNotifs && (
+                    <motion.span
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.85 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-1.5 text-xs text-green-400"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="shrink-0">
+                        <motion.path
+                          d="M2 6.5L5 9.5L11 3.5"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          initial={{ pathLength: 0 }}
+                          animate={{ pathLength: 1 }}
+                          transition={{ duration: 0.35, ease: 'easeOut' }}
+                        />
+                      </svg>
+                      Guardado
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           )}
