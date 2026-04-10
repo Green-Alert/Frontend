@@ -140,7 +140,7 @@ export default function Profile() {
   useEffect(() => {
     getPerfil()
       .then(({ data }) => {
-        const u = data.data.usuario;
+        const u = data.data.user;
         setPerfil(u);
         setEditForm({ nombre: u.nombre ?? '', apellido: u.apellido ?? '', telefono: u.telefono ?? '' });
       })
@@ -177,7 +177,7 @@ export default function Profile() {
         apellido: editForm.apellido.trim(),
         telefono: editForm.telefono.trim() || null,
       });
-      setPerfil(data.data.usuario);
+      setPerfil(data.data.user);
       setEditing(false);
       setEditErrors({});
       setSaved(true);
