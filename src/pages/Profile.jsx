@@ -5,7 +5,8 @@ import {
   User, Mail, Phone, Calendar, ShieldCheck, Pencil, Lock,
   X, Eye, EyeOff, Check, Camera, ChevronDown, ChevronUp,
   FileText, Loader2, MapPin, Clock, ChevronLeft, ChevronRight,
-  AlertTriangle, Plus,
+  AlertTriangle, Plus, Leaf, Flame, Waves, Droplets, Wind,
+  Volume2, Sun, Mountain, Trash2, HelpCircle, ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -118,6 +119,29 @@ const ESTADO_STEPS = [
   { key: 'en_proceso',  label: 'En proceso' },
   { key: 'resuelto',    label: 'Resuelto'   },
 ];
+const SEVERITY_CFG = {
+  bajo:    { label: 'Baja',    bg: 'bg-green-500/15',  text: 'text-green-400',  border: 'border-green-500/30' },
+  medio:   { label: 'Media',   bg: 'bg-orange-500/15', text: 'text-orange-400', border: 'border-orange-500/30' },
+  alto:    { label: 'Alta',    bg: 'bg-red-500/15',    text: 'text-red-400',    border: 'border-red-500/30' },
+  critico: { label: 'Crítico', bg: 'bg-red-600/25',    text: 'text-rose-200',   border: 'border-red-500/60' },
+};
+const TIPO_ICON_MAP = {
+  deforestacion: Leaf,
+  incendios_forestales: Flame,
+  deslizamientos: Mountain,
+  avalanchas_fluviotorrenciales: Waves,
+  agua: Droplets,
+  aire: Wind,
+  ruido: Volume2,
+  suelo: Mountain,
+  residuos: Trash2,
+  luminica: Sun,
+};
+function CategoryIcon({ tipo, color, size = 22 }) {
+  const Icon = TIPO_ICON_MAP[tipo] ?? HelpCircle;
+  return <Icon size={size} style={{ color }} />;
+}
+
 function ReporteStepper({ estado }) {
   if (estado === 'rechazado') {
     return (
@@ -627,59 +651,86 @@ export default function Profile() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {misReportes.map((r) => {
+                    {misReportes.map((r, idx) => {
                       const cfg = helpers.obtenerConfig(r.tipo_contaminacion);
                       const esPendiente = r.estado === 'pendiente';
+                      const accentColor = cfg?.color ?? '#6B7280';
+                      const severity = SEVERITY_CFG[r.nivel_severidad]
+                        ?? { label: r.nivel_severidad, bg: 'bg-gray-500/15', text: 'text-gray-300', border: 'border-gray-600/40' };
                       return (
-                        <div key={r.id_reporte} className="border border-gray-800 rounded-xl p-4 space-y-3">
-                          {/* Cabecera */}
-                          <div className="flex items-start gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <motion.div
+                          key={r.id_reporte}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.24, delay: idx * 0.04 }}
+                          className="relative overflow-hidden border border-gray-800 rounded-xl bg-white/[0.02]"
+                        >
+                          <div className="absolute inset-y-0 left-0 w-[3px]" style={{ backgroundColor: accentColor }} />
+                          <div className="py-4 pr-4 pl-5">
+                            <div className="flex items-start gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2 mb-1.5">
                                 <span
                                   className="badge border text-[11px]"
-                                  style={{ background: `${cfg?.color}18`, color: cfg?.color, borderColor: `${cfg?.color}40` }}
+                                  style={{ background: `${accentColor}18`, color: accentColor, borderColor: `${accentColor}40` }}
                                 >
                                   {cfg?.nombre ?? r.tipo_contaminacion}
                                 </span>
-                                <span className={`badge border text-[11px] ${
-                                  r.nivel_severidad === 'critico' ? 'bg-red-600/25 text-rose-200 border-red-500/60' :
-                                  r.nivel_severidad === 'alto'    ? 'bg-red-500/15 text-red-400 border-red-500/30' :
-                                  r.nivel_severidad === 'medio'   ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' :
-                                                                     'bg-green-500/15 text-green-400 border-green-500/30'
-                                }`}>
-                                  {{ bajo:'Baja', medio:'Media', alto:'Alta', critico:'Crítico' }[r.nivel_severidad] ?? r.nivel_severidad}
+                                <span className={`badge border text-[11px] ${severity.bg} ${severity.text} ${severity.border}`}>
+                                  {severity.label}
                                 </span>
                               </div>
-                              <p className="text-sm font-medium text-gray-100 line-clamp-1">{r.titulo}</p>
-                              <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                              <p className="text-sm font-medium text-gray-100 line-clamp-2">{r.titulo}</p>
+                              {r.descripcion && (
+                                <p className="mt-1 text-xs text-gray-400 leading-relaxed line-clamp-2">{r.descripcion}</p>
+                              )}
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-gray-500">
                                 {r.municipio && <span className="flex items-center gap-1"><MapPin size={11} />{r.municipio}</span>}
-                                <span className="flex items-center gap-1"><Clock size={11} />{new Date(r.created_at).toLocaleDateString('es-CO', { year:'numeric', month:'short', day:'numeric' })}</span>
+                                <span className="flex items-center gap-1"><Clock size={11} />{new Date(r.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                              </div>
+                            </div>
+                              <div className="hidden sm:flex w-14 h-14 rounded-xl border border-gray-700/70 bg-gray-900/60 items-center justify-center shrink-0">
+                                <CategoryIcon tipo={r.tipo_contaminacion} color={accentColor} />
+                              </div>
+                            </div>
+
+                            <div className="flex items-end gap-3 pt-3 mt-3 border-t border-gray-800">
+                              <div className="flex-1 min-w-0">
+                                <ReporteStepper estado={r.estado} />
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <Link
+                                  to={`/reports/${r.id_reporte}`}
+                                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/50 transition-colors"
+                                  title="Ver detalle"
+                                  aria-label="Ver detalle del reporte"
+                                >
+                                  <ExternalLink size={14} />
+                                </Link>
+                                {esPendiente && (
+                                  <Link
+                                    to={`/reports/${r.id_reporte}`}
+                                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-700 text-gray-400 hover:text-green-400 hover:border-green-500/50 transition-colors"
+                                    title="Editar"
+                                    aria-label="Editar reporte"
+                                  >
+                                    <Pencil size={14} />
+                                  </Link>
+                                )}
+                                {esPendiente && (
+                                  <button
+                                    onClick={() => setConfirmElim(r.id_reporte)}
+                                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-700 text-gray-400 hover:text-red-400 hover:border-red-500/50 transition-colors"
+                                    title="Eliminar"
+                                    aria-label="Eliminar reporte"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>
-
-                          {/* Stepper de estado */}
-                          <ReporteStepper estado={r.estado} />
-
-                          {/* Acciones (solo en pendiente) */}
-                          {esPendiente && (
-                            <div className="flex items-center gap-2 pt-1 border-t border-gray-800">
-                              <Link
-                                to={`/reports/${r.id_reporte}`}
-                                className="text-xs text-gray-400 hover:text-green-400 transition-colors border border-gray-700 hover:border-green-500/50 rounded-lg px-3 py-1.5"
-                              >
-                                Editar
-                              </Link>
-                              <button
-                                onClick={() => setConfirmElim(r.id_reporte)}
-                                className="text-xs text-gray-400 hover:text-red-400 transition-colors border border-gray-700 hover:border-red-500/50 rounded-lg px-3 py-1.5"
-                              >
-                                Eliminar
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        </motion.div>
                       );
                     })}
 
