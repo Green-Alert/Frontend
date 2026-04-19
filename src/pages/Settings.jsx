@@ -291,7 +291,7 @@ export default function Settings() {
                     Ver política de privacidad
                   </span>
                   <ExternalLink size={13} className="text-gray-600 group-hover:text-gray-400 transition-colors" />
-                </button>
+                </Link>
                 <Link
                   to="/terminos"
                   className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl border border-gray-800 hover:border-gray-600 text-sm text-gray-300 hover:text-white transition-all group"
