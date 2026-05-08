@@ -6,7 +6,6 @@ import {
   Droplet, Wind, Leaf, Trash2, HelpCircle,
   X, Video, Locate,
   Camera, Sparkles, AlertTriangle, Loader2, Check,
-} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import imageCompression from 'browser-image-compression';
 import { createReporte, analizarImagenIA } from '../services/api';
@@ -100,7 +99,7 @@ export default function FormularioReporte() {
   //                categoria, nombre, confianza, etiquetas, mensajeError }
   const [iaAnalisis, setIaAnalisis] = useState({ estado: 'idle' });
   const iaInputRef = useRef(null);
-
+  
   const set = (key, val) => setForm(p => ({ ...p, [key]: val }));
 
   const stepDir = useRef(1);
