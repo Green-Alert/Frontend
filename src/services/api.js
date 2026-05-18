@@ -103,3 +103,6 @@ export const marcarNotificacionLeida          = (uuid)    => api.patch(`/notific
 export const marcarTodasNotificacionesLeidas  = ()        => api.patch('/notificaciones/marcar-todas');
 export const eliminarNotificacion             = (uuid)    => api.delete(`/notificaciones/${uuid}`);
 
+// FE-30 (BE-15): push notifications FCM
+export const registrarFcmToken = (token) => api.post('/notificaciones/fcm-token', { token });
+

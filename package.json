@@ -12,6 +12,7 @@
     "@react-oauth/google": "^0.13.5",
     "axios": "^1.7.2",
     "browser-image-compression": "^2.0.2",
+    "firebase": "12.13.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "leaflet": "^1.9.4",
