@@ -5,6 +5,7 @@ import ToastContainer from './components/ToastContainer';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
+import { useFCM } from './hooks/useFCM';
 import Home from './pages/Home';
 import About from './pages/About';
 import Login from './pages/Login';
@@ -34,11 +35,18 @@ function HomeRoute() {
   return user ? <Navigate to="/dashboard" replace /> : <Home />;
 }
 
+/** FE-30: Activa FCM push notifications cuando el usuario está autenticado. */
+function FCMController() {
+  useFCM();
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
         <AuthProvider>
+          <FCMController />
           <Routes>
             {/* Rutas públicas con Layout */}
             <Route path="/" element={<Layout />}>
