@@ -1,9 +1,9 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Droplets, Trees, Flame, Wind, Trash2, Leaf, Search, Lightbulb,
   AlertTriangle, Waves, ChevronLeft, ChevronRight, CalendarDays,
-  User, Plus, LayoutGrid, List, X, MapPin, Clock, Heart, Eye,
+  User, Plus, LayoutGrid, List, X, MapPin, Clock, Heart, Eye, AlertCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getReportes } from '../services/api';
@@ -129,6 +129,64 @@ function SkeletonCard({ list }) {
   );
 }
 
+// ── Card estilo Netflix Top-3 ────────────────────────────────────────────────
+function TrendCard({ r, rank, metric }) {
+  const cfg   = helpers.obtenerConfig(r.tipo_contaminacion);
+  const color = cfg?.color ?? '#6b7280';
+  const Icon  = typeIcons[r.tipo_contaminacion] ?? Leaf;
+  const lugar = [r.municipio, r.departamento].filter(Boolean).join(', ');
+  return (
+    <Link
+      to={`/reports/${r.id_reporte}`}
+      className="group relative flex items-end shrink-0"
+      style={{ width: '168px' }}
+    >
+      {/* Número de ranking — estilo Netflix (trazo sin relleno) */}
+      <span
+        className="absolute bottom-0 left-0 select-none pointer-events-none z-0 font-black italic"
+        style={{
+          fontSize: '92px',
+          lineHeight: 0.82,
+          color: 'transparent',
+          WebkitTextStroke: '2px #374151',
+          fontFamily: 'Inter, system-ui, sans-serif',
+        }}
+      >
+        {rank}
+      </span>
+      {/* Tarjeta — se superpone al número desde la derecha */}
+      <motion.div
+        className="relative z-10 ml-12 flex-1 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden group-hover:border-gray-600 transition-colors"
+        whileHover={{ y: -4 }}
+        transition={{ duration: 0.18 }}
+      >
+        <div className="h-[3px] w-full" style={{ background: color }} />
+        <div className="p-3 flex flex-col gap-2">
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: `${color}22` }}
+          >
+            <Icon className="w-4 h-4" style={{ color }} />
+          </div>
+          <p className="text-[11px] font-semibold text-white leading-snug line-clamp-2">{r.titulo}</p>
+          {lugar && (
+            <p className="text-[10px] text-gray-500 flex items-center gap-1 leading-tight">
+              <MapPin size={8} className="shrink-0" />
+              <span className="truncate">{lugar}</span>
+            </p>
+          )}
+          <div className={`flex items-center gap-1 text-[11px] font-bold ${metric === 'likes' ? 'text-rose-400' : 'text-blue-400'}`}>
+            {metric === 'likes'
+              ? <><Heart size={11} className="fill-current shrink-0" />{Number(r.votos_relevancia) || 0} likes</>
+              : <><Eye size={11} className="shrink-0" />{Number(r.vistas) || 0} vistas</>
+            }
+          </div>
+        </div>
+      </motion.div>
+    </Link>
+  );
+}
+
 export default function Reports() {
   const navigate = useNavigate();
 
@@ -209,6 +267,15 @@ export default function Reports() {
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated  = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // ── Trending interno: top-3 por likes y top-3 por vistas ────────────────
+  const trending = useMemo(() => {
+    if (reports.length < 2) return null;
+    const byLikes  = [...reports].sort((a, b) => Number(b.votos_relevancia) - Number(a.votos_relevancia)).slice(0, 3);
+    const byVistas = [...reports].sort((a, b) => Number(b.vistas) - Number(a.vistas)).slice(0, 3);
+    if (!byLikes[0]?.votos_relevancia && !byVistas[0]?.vistas) return null;
+    return { likes: byLikes, vistas: byVistas };
+  }, [reports]);
 
   const noData    = !loading && reports.length === 0 && !error;
   const noResults = !loading && reports.length > 0 && filtered.length === 0;
@@ -397,6 +464,51 @@ export default function Reports() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── TRENDING — Top 3 por likes y vistas, estilo Netflix ── */}
+      {!loading && trending && (
+        <motion.section
+          className="space-y-4"
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.38, delay: 0.05 }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-lg bg-rose-500/15 border border-rose-500/25 flex items-center justify-center">
+              <Flame className="w-3.5 h-3.5 text-rose-400" />
+            </span>
+            <span className="text-xs font-bold text-gray-200 uppercase tracking-[0.14em]">En tendencia</span>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            {/* Top likes */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-1.5 pl-1">
+                <Heart size={11} className="text-rose-400 fill-current" />
+                <span className="text-[11px] text-rose-300 font-semibold uppercase tracking-wide">Más populares</span>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-dark">
+                {trending.likes.map((r, i) => (
+                  <TrendCard key={`l-${r.id_reporte}`} r={r} rank={i + 1} metric="likes" />
+                ))}
+              </div>
+            </div>
+
+            {/* Top vistas */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-1.5 pl-1">
+                <Eye size={11} className="text-blue-400" />
+                <span className="text-[11px] text-blue-300 font-semibold uppercase tracking-wide">Más vistos</span>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-dark">
+                {trending.vistas.map((r, i) => (
+                  <TrendCard key={`v-${r.id_reporte}`} r={r} rank={i + 1} metric="vistas" />
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.section>
+      )}
 
       {/* ── SKELETON ── */}
       {loading && (
@@ -608,7 +720,7 @@ export default function Reports() {
                     key={r.id_reporte}
                     onClick={() => navigate(`/reports/${r.id_reporte}`)}
                     className={[
-                      'relative cursor-pointer group flex items-center gap-4 py-3 px-4 rounded-xl',
+                      'relative cursor-pointer group flex items-center gap-3 py-2.5 px-4 rounded-xl',
                       'bg-white/[0.02] border transition-all duration-200',
                       isCritico ? 'border-rose-500/30' : 'border-gray-800',
                       'hover:border-green-600/50 hover:bg-white/[0.04]',
@@ -618,30 +730,35 @@ export default function Reports() {
                     transition={{ delay: 0.04 * i, duration: 0.3 }}
                     whileHover={{ x: 4 }}
                   >
+                    {/* Columna 1 — Ícono (40 px fijo) */}
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${color}20` }}>
                       <Icon className="w-5 h-5 shrink-0" style={{ color }} />
                     </div>
 
+                    {/* Columna 2 — Título + ubicación (crece) */}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-white group-hover:text-green-400 transition-colors truncate">
                         {r.titulo}
                       </p>
-                      <p className="text-xs text-gray-500 truncate mt-0.5 flex items-center gap-1">
-                        <MapPin size={10} className="shrink-0" />
-                        {lugar}
-                        <span className="text-gray-700 mx-1">·</span>
-                        <Clock size={10} className="shrink-0" />
-                        {timeAgo(r.created_at)}
-                      </p>
+                      <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                        <MapPin size={9} className="shrink-0" />
+                        <span className="truncate">{lugar}</span>
+                        <span className="text-gray-700 shrink-0 mx-0.5">·</span>
+                        <Clock size={9} className="shrink-0" />
+                        <span className="shrink-0">{timeAgo(r.created_at)}</span>
+                      </div>
                     </div>
 
-                    <span className={`badge shrink-0 hidden sm:inline-flex ${severityClass[r.nivel_severidad]}`}>
-                      {severityLabel[r.nivel_severidad] ?? r.nivel_severidad}
-                    </span>
+                    {/* Columna 3 — Severidad (72 px fijo, centrado) */}
+                    <div className="hidden sm:flex w-[72px] justify-center shrink-0">
+                      <span className={`badge ${severityClass[r.nivel_severidad]}`}>
+                        {severityLabel[r.nivel_severidad] ?? r.nivel_severidad}
+                      </span>
+                    </div>
 
-                    {/* Métricas: likes + vistas */}
-                    <div className="hidden sm:flex flex-col items-end gap-0.5 shrink-0 text-[10px] text-gray-500 min-w-[44px]">
-                      <span className={`inline-flex items-center gap-1 ${r.liked_by_me ? 'text-rose-300' : ''}`}>
+                    {/* Columna 4 — Métricas (84 px fijo, alineado a la derecha) */}
+                    <div className="hidden sm:flex items-center justify-end gap-2.5 w-[84px] shrink-0 text-[11px] text-gray-500">
+                      <span className={`inline-flex items-center gap-1 ${r.liked_by_me ? 'text-rose-400' : ''}`}>
                         <Heart size={10} className={r.liked_by_me ? 'fill-current' : ''} />
                         <span className="tabular-nums">{Number(r.votos_relevancia) || 0}</span>
                       </span>
@@ -651,24 +768,27 @@ export default function Reports() {
                       </span>
                     </div>
 
-                    <div className="flex flex-col items-end gap-1 shrink-0">
+                    {/* Columna 5 — Estado + icono confirmación (116 px fijo, alineado a la derecha) */}
+                    <div className="flex items-center justify-end gap-1.5 w-[116px] shrink-0">
                       <span className={`badge ${statusClass[r.estado]}`}>{statusLabel[r.estado] ?? r.estado}</span>
                       {sinConfirmar && (
-                        <span
-                          className="badge bg-gray-700/50 text-gray-500 border border-gray-700/50 cursor-help text-[10px]"
-                          title="Este reporte aún no ha sido validado por un moderador"
-                        >
-                          Sin confirmar
-                        </span>
+                        <AlertCircle
+                          size={13}
+                          className="text-amber-400/70 shrink-0"
+                          title="Sin confirmar por moderador"
+                        />
                       )}
                     </div>
 
-                    {isCritico && (
-                      <span className="flex h-2 w-2 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-rose-400 opacity-60" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-400" />
-                      </span>
-                    )}
+                    {/* Columna 6 — Indicador crítico (8 px fijo, siempre reservado) */}
+                    <div className="w-2 shrink-0 flex items-center justify-center">
+                      {isCritico && (
+                        <span className="flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-rose-400 opacity-60" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-400" />
+                        </span>
+                      )}
+                    </div>
                   </motion.div>
                 );
               })}

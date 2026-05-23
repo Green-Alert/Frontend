@@ -296,13 +296,14 @@ export default function Dashboard() {
   // ── KPI cards según rol ──────────────────────────────────────────────────
 
   const statsCards = rol === 'ciudadano' ? [
-    // Comunidad — el ciudadano ve el contexto global de la plataforma
-    { label: 'Total reportes',  Icon: TrendingUp,    value: stats?.total_reportes,     accent: 'text-blue-400',    border: 'border-t-blue-500',    bg: 'bg-blue-500/15',    glow: '#3b82f6', tooltip: 'Total de reportes registrados en la plataforma' },
-    { label: 'Municipios',      Icon: MapPin,        value: stats?.municipios_activos, accent: 'text-violet-400',  border: 'border-t-violet-500',  bg: 'bg-violet-500/15',  glow: '#8b5cf6', tooltip: 'Municipios con al menos un reporte activo' },
-    { label: 'Este mes',        Icon: ClipboardList, value: stats?.reportes_este_mes,  accent: 'text-emerald-400', border: 'border-t-emerald-500', bg: 'bg-emerald-500/15', glow: '#10b981', tooltip: 'Reportes enviados este mes por toda la comunidad' },
-    { label: 'En revisión',     Icon: Search,        value: stats?.en_revision,        accent: 'text-amber-400',   border: 'border-t-amber-500',   bg: 'bg-amber-500/15',   glow: '#f59e0b', tooltip: 'Reportes pendientes de revisión por moderadores' },
-    { label: 'Resueltos',       Icon: CheckCircle2,  value: stats?.resueltos,          accent: 'text-green-400',   border: 'border-t-green-500',   bg: 'bg-green-500/15',   glow: '#22c55e', tooltip: 'Reportes que ya fueron atendidos exitosamente' },
-    { label: 'Ciudadanos',      Icon: Users,         value: stats?.total_usuarios,     accent: 'text-orange-400',  border: 'border-t-orange-500',  bg: 'bg-orange-500/15',  glow: '#f97316', tooltip: 'Ciudadanos registrados en GreenAlert' },
+    // ── Tus reportes (personales) — primeros 3 ──────────────────────
+    { label: 'Mis reportes',    Icon: ClipboardList, value: misReportes.length, accent: 'text-emerald-400', border: 'border-t-emerald-500', bg: 'bg-emerald-500/15', glow: '#10b981', tooltip: 'Reportes que has enviado a GreenAlert' },
+    { label: 'En seguimiento',  Icon: Clock,         value: misPendientes,      accent: 'text-amber-400',   border: 'border-t-amber-500',   bg: 'bg-amber-500/15',   glow: '#f59e0b', tooltip: 'Tus reportes pendientes o en revisión por los moderadores' },
+    { label: 'Mis resueltos',   Icon: CheckCircle2,  value: misResueltos,       accent: 'text-green-400',   border: 'border-t-green-500',   bg: 'bg-green-500/15',   glow: '#22c55e', tooltip: 'Tus reportes que ya fueron atendidos exitosamente' },
+    // ── La comunidad (contexto global) — últimos 3 ──────────────────
+    { label: 'Este mes',        Icon: TrendingUp,    value: stats?.reportes_este_mes,  accent: 'text-blue-400',   border: 'border-t-blue-500',   bg: 'bg-blue-500/15',   glow: '#3b82f6', tooltip: 'Reportes nuevos en toda la comunidad durante este mes' },
+    { label: 'Municipios',      Icon: MapPin,        value: stats?.municipios_activos, accent: 'text-violet-400', border: 'border-t-violet-500', bg: 'bg-violet-500/15', glow: '#8b5cf6', tooltip: 'Municipios con al menos un reporte registrado en la plataforma' },
+    { label: 'Total comunidad', Icon: Activity,      value: stats?.total_reportes,     accent: 'text-teal-400',   border: 'border-t-teal-500',   bg: 'bg-teal-500/15',   glow: '#14b8a6', tooltip: 'Total de reportes registrados por toda la comunidad' },
   ] : rol === 'moderador' ? [
     // Cola de trabajo del moderador
     { label: 'En revisión',     Icon: Search,        value: stats?.en_revision,        accent: 'text-amber-400',   border: 'border-t-amber-500',   bg: 'bg-amber-500/15',   glow: '#f59e0b', tooltip: 'Pendientes de revisión en la plataforma' },
@@ -324,6 +325,33 @@ export default function Dashboard() {
     { label: 'Este mes',        Icon: ClipboardList, value: stats?.reportes_este_mes,  accent: 'text-emerald-400', border: 'border-t-emerald-500', bg: 'bg-emerald-500/15', glow: '#10b981', tooltip: 'Nuevos reportes este mes' },
     { label: 'Usuarios',        Icon: Users,         value: stats?.total_usuarios,     accent: 'text-orange-400',  border: 'border-t-orange-500',  bg: 'bg-orange-500/15',  glow: '#f97316', tooltip: 'Total de usuarios registrados' },
   ];
+
+  // Helper para renderizar una KPI card individual
+  const renderCard = (s, i) => (
+    <motion.div
+      key={s.label}
+      title={s.tooltip}
+      className={`relative overflow-hidden bg-gray-900 border border-gray-800 ${s.border} border-t-[3px] rounded-2xl p-4 flex flex-col gap-3 cursor-default`}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.05 * i, duration: 0.4 }}
+    >
+      <div
+        className="absolute -top-6 -right-6 w-16 h-16 rounded-full blur-2xl opacity-20 pointer-events-none"
+        style={{ background: s.glow }}
+      />
+      <div className={`w-9 h-9 ${s.bg} rounded-xl flex items-center justify-center shrink-0`}>
+        <s.Icon className={`w-[18px] h-[18px] ${s.accent}`} />
+      </div>
+      <div>
+        <div className="flex items-baseline gap-0.5">
+          <CountUp target={s.value} className={`text-2xl sm:text-3xl font-extrabold ${s.accent}`} />
+          {s.suffix && <span className={`text-lg sm:text-xl font-extrabold ${s.accent}`}>{s.suffix}</span>}
+        </div>
+        <p className="text-[11px] text-gray-500 mt-0.5 leading-tight">{s.label}</p>
+      </div>
+    </motion.div>
+  );
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
@@ -425,66 +453,46 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* ── KPI Cards — comunidad ───────────────────────────────────── */}
+      {/* ── KPI Cards ─────────────────────────────────────────────────── */}
       <section className="mb-4">
-        <div className={`grid grid-cols-2 sm:grid-cols-3 ${statsCards.length > 6 ? 'lg:grid-cols-4' : 'lg:grid-cols-6'} gap-3`}>
-          {statsCards.map((s, i) => (
-            <motion.div
-              key={s.label}
-              title={s.tooltip}
-              className={`relative overflow-hidden bg-gray-900 border border-gray-800 ${s.border} border-t-[3px] rounded-2xl p-4 flex flex-col gap-3 cursor-default`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 * i, duration: 0.4 }}
-            >
-              <div
-                className="absolute -top-6 -right-6 w-16 h-16 rounded-full blur-2xl opacity-20 pointer-events-none"
-                style={{ background: s.glow }}
-              />
-              <div className={`w-9 h-9 ${s.bg} rounded-xl flex items-center justify-center shrink-0`}>
-                <s.Icon className={`w-[18px] h-[18px] ${s.accent}`} />
+        {rol === 'ciudadano' ? (
+          <div className="space-y-5">
+            <div>
+              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-2 ml-1">Tus reportes</p>
+              <div className="grid grid-cols-3 gap-3">
+                {statsCards.slice(0, 3).map((s, i) => renderCard(s, i))}
               </div>
-              <div>
-                <div className="flex items-baseline gap-0.5">
-                  <CountUp target={s.value} className={`text-2xl sm:text-3xl font-extrabold ${s.accent}`} />
-                  {s.suffix && <span className={`text-lg sm:text-xl font-extrabold ${s.accent}`}>{s.suffix}</span>}
-                </div>
-                <p className="text-[11px] text-gray-500 mt-0.5 leading-tight">{s.label}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-2 ml-1">La comunidad</p>
+              <div className="grid grid-cols-3 gap-3">
+                {statsCards.slice(3).map((s, i) => renderCard(s, i + 3))}
               </div>
-            </motion.div>
-          ))}
-        </div>
+            </div>
+          </div>
+        ) : (
+          <div className={`grid grid-cols-2 sm:grid-cols-3 ${statsCards.length > 6 ? 'lg:grid-cols-4' : 'lg:grid-cols-6'} gap-3`}>
+            {statsCards.map((s, i) => renderCard(s, i))}
+          </div>
+        )}
       </section>
 
-      {/* ── Tu contribución (solo ciudadano) ────────────────────────── */}
+      {/* ── Acceso rápido a mis reportes (solo ciudadano) ────────────── */}
       {rol === 'ciudadano' && (
-        <motion.div
-          className="mb-8 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 px-5 py-4 bg-gray-900/50 border border-gray-800/60 rounded-2xl"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.38, duration: 0.4 }}
-        >
-          <div className="shrink-0">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Tu contribución</p>
-            <p className="text-[10px] text-gray-600 mt-0.5">Tus reportes en la plataforma</p>
-          </div>
-          <div className="w-px h-8 bg-gray-800 shrink-0 hidden sm:block" />
-          <div className="flex flex-wrap gap-6 sm:gap-8">
-            {[
-              { label: 'Reportes enviados', value: misReportes.length, accent: 'text-blue-400',  tooltip: 'Total de reportes que has creado' },
-              { label: 'Sin resolver',      value: misPendientes,      accent: 'text-amber-400', tooltip: 'Tus reportes aún en proceso de atención (pendientes o en revisión)' },
-              { label: 'Resueltos',         value: misResueltos,       accent: 'text-green-400', tooltip: 'Tus reportes que ya fueron atendidos y cerrados' },
-            ].map(m => (
-              <div key={m.label} title={m.tooltip} className="flex flex-col cursor-default">
-                <CountUp target={m.value} className={`text-xl font-extrabold ${m.accent}`} />
-                <span className="text-[10px] text-gray-500 mt-0.5">{m.label}</span>
-              </div>
-            ))}
-          </div>
-          <Link to="/reports" className="ml-auto text-xs text-gray-500 hover:text-green-400 flex items-center gap-1 transition-colors shrink-0">
-            Ver mis reportes <ArrowRight size={10} />
-          </Link>
-        </motion.div>
+        <Link to="/reports">
+          <motion.div
+            className="mb-8 flex items-center justify-between px-5 py-4 bg-gray-900/50 border border-gray-800/60 rounded-2xl hover:border-green-500/30 transition-colors group cursor-pointer"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.38, duration: 0.4 }}
+          >
+            <div>
+              <p className="text-sm font-medium text-white">Ver mis reportes</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">Gestiona y da seguimiento a tus reportes enviados</p>
+            </div>
+            <ArrowRight size={16} className="text-gray-600 group-hover:text-green-400 transition-colors shrink-0" />
+          </motion.div>
+        </Link>
       )}
 
       {/* ── Donut chart + Activity feed ─────────────────────────────────── */}
@@ -554,10 +562,10 @@ export default function Dashboard() {
                   <div className="h-2.5 bg-gray-700 rounded w-1/2" />
                 </div>
               ))
-            ) : activity.length === 0 ? (
+            ) : (rol === 'ciudadano' ? misReportes : activity).length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-2 py-10 text-center">
                 <ClipboardList className="w-9 h-9 text-gray-700" />
-                <p className="text-sm text-gray-500">No hay reportes aún</p>
+                <p className="text-sm text-gray-500">{rol === 'ciudadano' ? 'Aún no has enviado reportes' : 'No hay reportes aún'}</p>
               </div>
             ) : (
               (rol === 'ciudadano' ? misReportes : activity).slice(0, 8).map((r, i) => {
@@ -858,20 +866,26 @@ export default function Dashboard() {
                   <option key={k} value={k}>{v}</option>
                 ))}
               </select>
-              <input
-                type="date"
-                value={mapFilters.dateFrom}
-                onChange={e => setMapFilters(f => ({ ...f, dateFrom: e.target.value }))}
-                className={mapSelectCls}
-                title="Desde"
-              />
-              <input
-                type="date"
-                value={mapFilters.dateTo}
-                onChange={e => setMapFilters(f => ({ ...f, dateTo: e.target.value }))}
-                className={mapSelectCls}
-                title="Hasta"
-              />
+              <label className="flex flex-col gap-0.5">
+                <span className="text-[9px] text-gray-600 uppercase tracking-widest pl-1">Desde</span>
+                <input
+                  type="date"
+                  value={mapFilters.dateFrom}
+                  onChange={e => setMapFilters(f => ({ ...f, dateFrom: e.target.value }))}
+                  className={mapSelectCls}
+                  style={{ colorScheme: 'dark' }}
+                />
+              </label>
+              <label className="flex flex-col gap-0.5">
+                <span className="text-[9px] text-gray-600 uppercase tracking-widest pl-1">Hasta</span>
+                <input
+                  type="date"
+                  value={mapFilters.dateTo}
+                  onChange={e => setMapFilters(f => ({ ...f, dateTo: e.target.value }))}
+                  className={mapSelectCls}
+                  style={{ colorScheme: 'dark' }}
+                />
+              </label>
             </div>
             {rol === 'ciudadano' && (
               <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer select-none shrink-0">

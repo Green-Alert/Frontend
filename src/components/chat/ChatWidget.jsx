@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, Send, Trash2, Loader2, HelpCircle, ArrowLeft, Search } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useChatbot } from '../../hooks/useChatbot';
 import { useUbicacionUsuario } from '../../hooks/useUbicacionUsuario';
 import { useAuth } from '../../context/AuthContext';
@@ -33,6 +34,7 @@ const FAB_GLOW = {
 
 export default function ChatWidget() {
   const [abierto, setAbierto]   = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
   const [view, setView]         = useState('chat'); // 'chat' | 'faq'
   const [borrador, setBorrador] = useState('');
   const [faqSearch, setFaqSearch] = useState('');
@@ -116,8 +118,104 @@ export default function ChatWidget() {
 
   const toggleGrupo = (nombre) => setFaqAbiertos((prev) => ({ ...prev, [nombre]: !prev[nombre] }));
 
+  const { pathname } = useLocation();
+
+  // Secuencia de saludo en landing: mensaje 1 tras 1.5 s, mensaje 2 dos segundos después.
+  const [landingStep, setLandingStep] = useState(0);
+
+  useEffect(() => {
+    if (pathname !== '/') { setLandingStep(0); return; }
+    const t1 = setTimeout(() => setLandingStep(1), 1500);
+    const t2 = setTimeout(() => setLandingStep(2), 3500);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [pathname]);
+
+  // Mostrar burbuja de bienvenida 3.5 s después de cargar en páginas internas.
+  useEffect(() => {
+    if (pathname === '/') return;
+    const t = setTimeout(() => setShowTooltip(true), 3500);
+    return () => clearTimeout(t);
+  }, [pathname]);
+
+  // Ocultar si el usuario abre el chat.
+  useEffect(() => {
+    if (abierto) { setShowTooltip(false); setLandingStep(0); }
+  }, [abierto]);
+
+  const dismissTooltip = () => { setShowTooltip(false); setLandingStep(0); };
+
   return (
     <>
+      {/* ── Burbuja de bienvenida ──────────────────────────────────────── */}
+      <AnimatePresence>
+        {((pathname === '/' ? landingStep > 0 : showTooltip) && !abierto) && (
+          <motion.div
+            key="aurel-tooltip"
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0,  scale: 1 }}
+            exit={{    opacity: 0, y: 8,  scale: 0.95 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="fixed bottom-36 sm:bottom-40 right-4 sm:right-5 z-50 max-w-[200px] bg-gray-900 border border-gray-700 rounded-2xl rounded-br-sm p-4 shadow-xl"
+          >
+            {/* Botón cerrar */}
+            <button
+              type="button"
+              aria-label="Cerrar"
+              onClick={dismissTooltip}
+              className="absolute top-2 right-2 text-gray-600 hover:text-gray-400 transition-colors"
+            >
+              <X size={12} />
+            </button>
+
+            {pathname === '/' ? (
+              <>
+                <p className="text-[13px] text-gray-300 leading-relaxed pr-3">
+                  Bienvenido a <span className="text-green-400 font-semibold">GreenAlert</span>
+                </p>
+                <AnimatePresence>
+                  {landingStep >= 2 && (
+                    <motion.p
+                      key="landing-msg2"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="text-[12px] text-gray-500 mt-1.5 leading-relaxed"
+                    >
+                      Conoce lo que puedes hacer en nuestra plataforma.
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </>
+            ) : (
+              <>
+                <p className="text-[13px] text-gray-300 leading-relaxed pr-3">
+                  ¡Hola! Soy <span className="text-green-400 font-semibold">AUREL</span>, tu asistente ambiental.
+                </p>
+                <p className="text-[12px] text-gray-500 mt-1.5 leading-relaxed">
+                  Puedo ayudarte con dudas sobre la plataforma o el medio ambiente.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setAbierto(true); dismissTooltip(); }}
+                  className="mt-3 text-[12px] text-green-400 hover:text-green-300 font-semibold transition-colors flex items-center gap-1"
+                >
+                  Pregúntame →
+                </button>
+              </>
+            )}
+
+            {/* Triángulo apuntando a la mascota */}
+            <div
+              className="absolute -bottom-2 right-10 w-0 h-0"
+              style={{
+                borderLeft: '7px solid transparent',
+                borderRight: '7px solid transparent',
+                borderTop: '8px solid #374151',
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* ── FAB ─────────────────────────────────────────────────────── */}
       <button
         type="button"
@@ -148,7 +246,7 @@ export default function ChatWidget() {
             >
               <div className="aurel-float w-full h-full">
                 <img
-                  src="/aurel.png"
+                  src="/aurel.webp"
                   alt="AUREL"
                   draggable={false}
                   className="w-full h-full object-contain select-none"
@@ -168,7 +266,7 @@ export default function ChatWidget() {
             animate={{ opacity: 1, y: 0,  scale: 1 }}
             exit={{    opacity: 0, y: 20, scale: 0.96 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="fixed z-40 flex flex-col overflow-hidden bg-gray-900/97 backdrop-blur border border-gray-700 shadow-2xl inset-x-2 bottom-2 top-2 rounded-2xl sm:inset-x-auto sm:top-auto sm:bottom-24 sm:right-5 sm:w-[360px] sm:h-[min(520px,calc(100vh-9rem))] sm:rounded-2xl"
+            className="fixed z-40 flex flex-col overflow-hidden bg-gray-950 border border-gray-700/80 shadow-2xl inset-x-3 bottom-3 top-16 rounded-2xl sm:inset-x-auto sm:top-auto sm:bottom-20 sm:right-4 sm:w-[320px] sm:h-[min(460px,calc(100vh-7rem))] lg:right-5 lg:w-[340px] lg:h-[min(500px,calc(100vh-8rem))] sm:rounded-2xl"
             role="dialog"
             aria-label="Chat con AUREL"
           >

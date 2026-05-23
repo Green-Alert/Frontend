@@ -108,7 +108,7 @@ export default function Register() {
       >
         <NebulaBackground compact dim />
         <div className="relative z-10 text-center max-w-sm">
-          <img src="/chrome-512x512.png" alt="GreenAlert" className="h-36 w-auto object-contain mx-auto mb-4 drop-shadow-2xl" />
+          <img src="/chrome-512x512.webp" alt="GreenAlert" className="h-36 w-auto object-contain mx-auto mb-4 drop-shadow-2xl" loading="lazy" />
           <h2 className="text-2xl font-bold mb-1">
             <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
               GreenAlert
@@ -152,7 +152,7 @@ export default function Register() {
           {/* Logo mobile */}
           <div className="lg:hidden flex justify-center mb-6">
             <Link to="/">
-              <img src="/chrome-512x512.png" alt="GreenAlert" className="h-16 w-auto object-contain" />
+              <img src="/chrome-512x512.webp" alt="GreenAlert" className="h-16 w-auto object-contain" loading="lazy" />
             </Link>
           </div>
 
