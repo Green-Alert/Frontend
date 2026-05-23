@@ -22,6 +22,11 @@
   .badge {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
   }
+  /* Mapa — ajusta las tiles al tono charcoal de la paleta gray-900 del proyecto */
+  .ga-map .leaflet-tile-pane {
+    filter: brightness(1.35) saturate(0.75);
+  }
+
   .scrollbar-dark {
     scrollbar-width: thin;
     scrollbar-color: #374151 transparent;

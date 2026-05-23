@@ -11,7 +11,6 @@ const navItems = [
   { to: '/',           label: 'Inicio',          end: true,  guestOnly: true, scrollToTop: true },
   { to: '/dashboard',  label: 'Página Principal', authOnly: true },
   { to: '/reports',    label: 'Reportes',         authOnly: true },
-  { to: '/trending',   label: 'Tendencias',       authOnly: true },
   { to: '/moderacion', label: 'Moderación',       roles: ['moderador', 'admin'] },
   { to: '/admin',      label: 'Administración',   roles: ['admin'] },
   { to: '/#nosotros',  label: 'Acerca de',        hash: true, guestOnly: true },
@@ -98,7 +97,7 @@ export default function Navbar() {
           className="flex items-center shrink-0"
           onClick={() => window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })}
         >
-          <img src="/chrome-192x192.png" alt="GreenAlert" className="h-9 w-9 object-contain" />
+          <img src="/chrome-192x192.webp" alt="GreenAlert" className="h-9 w-9 object-contain" />
           <span className="ml-2 font-bold text-white tracking-tight hidden sm:inline">
             Green<span className="text-green-400">Alert</span>
           </span>

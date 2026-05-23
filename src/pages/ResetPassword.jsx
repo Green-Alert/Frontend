@@ -114,7 +114,7 @@ export default function ResetPassword() {
       >
         <NebulaBackground compact dim />
         <div className="relative z-10 text-center max-w-sm">
-          <img src="/chrome-512x512.png" alt="GreenAlert" className="h-36 w-auto object-contain mx-auto mb-4 drop-shadow-2xl" />
+          <img src="/chrome-512x512.webp" alt="GreenAlert" className="h-36 w-auto object-contain mx-auto mb-4 drop-shadow-2xl" loading="lazy" />
           <h2 className="text-2xl font-bold mb-1">
             <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
               GreenAlert
@@ -138,7 +138,7 @@ export default function ResetPassword() {
 
           {/* Logo móvil */}
           <div className="flex items-center gap-2 mb-8 lg:hidden justify-center">
-            <img src="/chrome-192x192.png" alt="GreenAlert" className="h-9 w-9 object-contain" />
+            <img src="/chrome-192x192.webp" alt="GreenAlert" className="h-9 w-9 object-contain" />
             <span className="font-bold text-white text-lg">
               Green<span className="text-green-400">Alert</span>
             </span>

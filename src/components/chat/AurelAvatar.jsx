@@ -36,7 +36,7 @@ export default function AurelAvatar({ size = 'sm', estado = 'optimo', showDot = 
   return (
     <div className={`relative ${wrap} flex-shrink-0 ${className}`}>
       <img
-        src="/aurel.png"
+        src="/aurel.webp"
         alt="AUREL"
         className="w-full h-full object-contain select-none"
         draggable={false}
