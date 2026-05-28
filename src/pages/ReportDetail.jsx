@@ -13,6 +13,9 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import LikeButton from '../components/LikeButton';
 import MediaLightbox from '../components/MediaLightbox';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 const typeIcons = {
   agua: Droplets, aire: Wind, suelo: Leaf,
@@ -21,6 +24,84 @@ const typeIcons = {
   avalanchas_fluviotorrenciales: Waves,
   otro: Leaf,
 };
+
+const reportPin = L.divIcon({
+  className: '',
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+    <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 22 14 22S28 24.5 28 14C28 6.27 21.73 0 14 0z" fill="#22c55e" stroke="white" stroke-width="1.5"/>
+    <circle cx="14" cy="14" r="5.5" fill="white"/>
+  </svg>`,
+  iconSize: [28, 36],
+  iconAnchor: [14, 36],
+  popupAnchor: [0, -36],
+});
+
+const DETAIL_MAP_TILES = [
+  {
+    key: 'light',
+    label: 'Claro',
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  },
+  {
+    key: 'dark',
+    label: 'Oscuro',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  },
+  {
+    key: 'satellite',
+    label: 'Satélite',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; <a href="https://www.esri.com/">Esri</a>, Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP',
+  },
+];
+
+function ReportDetailMap({ lat, lon }) {
+  const [mapStyle, setMapStyle] = useState(
+    () => localStorage.getItem('ga-map-style') || 'light'
+  );
+  const tile = DETAIL_MAP_TILES.find((t) => t.key === mapStyle) ?? DETAIL_MAP_TILES[0];
+
+  const handleStyleChange = (key) => {
+    setMapStyle(key);
+    localStorage.setItem('ga-map-style', key);
+  };
+
+  return (
+    <div className="relative rounded-xl overflow-hidden border border-gray-700 h-64" style={{ isolation: 'isolate' }}>
+      {/* Selector de estilo */}
+      <div className="absolute top-2 right-2 z-[1000] flex gap-0.5 bg-gray-950/90 backdrop-blur border border-gray-700 rounded-lg p-0.5">
+        {DETAIL_MAP_TILES.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => handleStyleChange(t.key)}
+            className={`px-2 py-1 rounded-md text-[11px] font-medium transition-colors ${
+              mapStyle === t.key ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <MapContainer
+        center={[lat, lon]}
+        zoom={15}
+        style={{ height: '100%', width: '100%' }}
+        zoomControl
+        scrollWheelZoom
+      >
+        <TileLayer
+          key={tile.key}
+          url={tile.url}
+          attribution={tile.attribution}
+          maxZoom={19}
+        />
+        <Marker position={[lat, lon]} icon={reportPin} />
+      </MapContainer>
+    </div>
+  );
+}
 const statusClass = {
   pendiente:   'bg-gray-500/15 text-gray-400 border border-gray-500/30',
   en_revision: 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30',
@@ -189,9 +270,9 @@ export default function ReportDetail() {
   // Lightbox: solo navega entre imágenes (los videos tienen su propio reproductor inline).
   const mediaItems = imageEvidencias;
 
-  // Permisos: solo el dueño puede editar/eliminar y solo si está pendiente
+  // Permisos: solo el dueño puede editar/eliminar mientras esté pendiente o en revisión
   const isOwner    = user && report.id_usuario === user.id_usuario;
-  const canManage  = isOwner && report.estado === 'pendiente';
+  const canManage  = isOwner && (report.estado === 'pendiente' || report.estado === 'en_revision');
 
   const startEdit = () => {
     setEditForm({
@@ -295,7 +376,7 @@ export default function ReportDetail() {
 
         <div className="flex flex-col gap-6 p-6 sm:p-8">
           {/* Header */}
-          <div className="flex flex-wrap items-start gap-4 justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4 sm:justify-between">
             <div className="flex items-start gap-3 min-w-0 flex-1">
               <div
                 className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
@@ -324,48 +405,50 @@ export default function ReportDetail() {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap shrink-0">
-              {report.subcategoria && (
-                <span className="badge border border-gray-600 bg-gray-700/40 text-gray-300">
-                  {report.subcategoria}
+            <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                {report.subcategoria && (
+                  <span className="badge border border-gray-600 bg-gray-700/40 text-gray-300">
+                    {report.subcategoria}
+                  </span>
+                )}
+                <span className={`badge ${severityClass[report.nivel_severidad]}`}>
+                  {severityLabel[report.nivel_severidad] ?? report.nivel_severidad}
                 </span>
-              )}
-              <span className={`badge ${severityClass[report.nivel_severidad]}`}>
-                {severityLabel[report.nivel_severidad] ?? report.nivel_severidad}
-              </span>
-              <span className={`badge ${statusClass[report.estado]}`}>
-                {statusLabel[report.estado] ?? report.estado}
-              </span>
+                <span className={`badge ${statusClass[report.estado]}`}>
+                  {statusLabel[report.estado] ?? report.estado}
+                </span>
+              </div>
+              {/* Vistas (izq) y like (der) debajo de los badges */}
+              <div className="flex items-center gap-2">
+                <span
+                  className="inline-flex items-center gap-1.5 text-xs text-gray-400"
+                  title="Vistas del reporte"
+                >
+                  <Eye size={13} />
+                  <span className="tabular-nums">{Number(report.vistas) || 0}</span>
+                  <span>{(Number(report.vistas) || 0) === 1 ? 'vista' : 'vistas'}</span>
+                </span>
+                <span className="w-px h-3.5 bg-gray-700" />
+                <LikeButton
+                  id_reporte={report.id_reporte}
+                  liked={!!report.liked_by_me}
+                  count={Number(report.votos_relevancia) || 0}
+                  ownerId={report.id_usuario}
+                  size="sm"
+                  onChange={({ liked, count }) =>
+                    setReport((r) => (r ? { ...r, liked_by_me: liked, votos_relevancia: count } : r))
+                  }
+                />
+              </div>
             </div>
-          </div>
-
-          {/* Métricas de interacción: likes y vistas */}
-          <div className="flex items-center gap-3 flex-wrap -mt-2">
-            <LikeButton
-              id_reporte={report.id_reporte}
-              liked={!!report.liked_by_me}
-              count={Number(report.votos_relevancia) || 0}
-              ownerId={report.id_usuario}
-              size="md"
-              onChange={({ liked, count }) =>
-                setReport((r) => (r ? { ...r, liked_by_me: liked, votos_relevancia: count } : r))
-              }
-            />
-            <span
-              className="inline-flex items-center gap-1.5 text-xs text-gray-400"
-              title="Vistas del reporte"
-            >
-              <Eye size={14} />
-              <span className="tabular-nums">{Number(report.vistas) || 0}</span>
-              <span>{(Number(report.vistas) || 0) === 1 ? 'vista' : 'vistas'}</span>
-            </span>
           </div>
 
           {/* Acciones del propietario (editar / eliminar) */}
           {canManage && !editMode && (
             <div className="flex items-center gap-2 -mt-2">
               <span className="text-[11px] text-gray-500 mr-auto flex items-center gap-1">
-                <Pencil size={11} /> Puedes editar o eliminar este reporte mientras esté en estado pendiente.
+                <Pencil size={11} /> Puedes editar o eliminar este reporte mientras esté pendiente o en revisión.
               </span>
               <button
                 type="button"
@@ -553,30 +636,18 @@ export default function ReportDetail() {
             </div>
           )}
 
-          {/* OpenStreetMap iframe */}
-          {report.latitud && report.longitud && (() => {
-            const lat = parseFloat(report.latitud);
-            const lon = parseFloat(report.longitud);
-            const delta = 0.01;
-            const bbox = `${lon - delta},${lat - delta},${lon + delta},${lat + delta}`;
-            return (
-              <div>
-                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5" /> Ubicación en el mapa
-                </p>
-                <div className="rounded-xl overflow-hidden border border-gray-700 h-64">
-                  <iframe
-                    title="Ubicación del reporte"
-                    width="100%"
-                    height="100%"
-                    loading="lazy"
-                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lon}`}
-                    className="block"
-                  />
-                </div>
-              </div>
-            );
-          })()}
+          {/* Mapa de ubicación */}
+          {report.latitud && report.longitud && (
+            <div>
+              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5" /> Ubicación en el mapa
+              </p>
+              <ReportDetailMap
+                lat={parseFloat(report.latitud)}
+                lon={parseFloat(report.longitud)}
+              />
+            </div>
+          )}
 
           {/* Meta grid */}
           <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-gray-800 text-sm">
@@ -612,29 +683,30 @@ export default function ReportDetail() {
                 <p className="text-gray-200">{formatDate(report.created_at)}</p>
               </div>
             </div>
-          </div>
 
-          {/* Autor */}
-          {autor && (
-            <div className="flex items-center gap-3 pt-4 border-t border-gray-800">
-              <div className="w-9 h-9 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center overflow-hidden shrink-0">
-                {autor.avatar_url
-                  ? <img src={autor.avatar_url} alt={autor.nombre} className="w-full h-full object-cover" />
-                  : <User className="w-4 h-4 text-green-400" />}
+            {/* Autor — al lado de Registrado, debajo de Coordenadas */}
+            {autor && (
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center overflow-hidden shrink-0">
+                  {autor.avatar_url
+                    ? <img src={autor.avatar_url} alt={autor.nombre} className="w-full h-full object-cover" />
+                    : <User className="w-4 h-4 text-green-400" />}
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs mb-0.5">Creado por</p>
+                  <p className="text-sm text-gray-200 font-medium">
+                    {autor.nombre} {autor.apellido}
+                  </p>
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    {(autor.rol === 'moderador' || autor.rol === 'admin') && (
+                      <ShieldCheck className="w-3 h-3 text-blue-400" />
+                    )}
+                    {rolLabel[autor.rol] ?? autor.rol}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-200 font-medium">
-                  {autor.nombre} {autor.apellido}
-                </p>
-                <p className="text-xs text-gray-500 flex items-center gap-1">
-                  {(autor.rol === 'moderador' || autor.rol === 'admin') && (
-                    <ShieldCheck className="w-3 h-3 text-blue-400" />
-                  )}
-                  {rolLabel[autor.rol] ?? autor.rol}
-                </p>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
