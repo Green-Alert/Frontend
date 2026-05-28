@@ -22,10 +22,19 @@
   .badge {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
   }
-  /* Mapa — ajusta las tiles al tono charcoal de la paleta gray-900 del proyecto */
-  .ga-map .leaflet-tile-pane {
+  /* Mapa — filtros por estilo de tile */
+  /* isolation: isolate crea un stacking context propio para Leaflet,
+     evitando que sus z-indices (400, 1000) se filtren al documento global */
+  .leaflet-container {
+    isolation: isolate;
+  }
+  .ga-map-dark .leaflet-tile-pane {
     filter: brightness(1.35) saturate(0.75);
   }
+  .ga-map-satellite .leaflet-tile-pane {
+    filter: brightness(1.05) contrast(1.05) saturate(1.1);
+  }
+  /* .ga-map-light (Voyager): sin filtro, los colores son correctos por defecto */
 
   .scrollbar-dark {
     scrollbar-width: thin;
