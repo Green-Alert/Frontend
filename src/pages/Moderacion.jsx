@@ -339,78 +339,87 @@ export default function Moderacion() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
       {/* Encabezado */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-6 h-6 text-blue-400" />
+      <div className="flex items-start sm:items-center justify-between flex-wrap gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5 text-blue-400" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">
+              Panel de <span className="text-green-400">Moderación</span>
+            </h1>
           </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Panel de Moderación</h1>
-            <p className="text-sm text-gray-400 mt-0.5">Revisa y gestiona el estado de los reportes.</p>
-          </div>
+          <p className="text-sm text-gray-500 pl-[52px]">
+            {loading
+              ? 'Cargando reportes…'
+              : `${reportes.length} reporte${reportes.length !== 1 ? 's' : ''} en estado "${getBadge(filtroEstado).label}"`}
+          </p>
         </div>
         <button
           onClick={fetchReportes}
           disabled={loading}
-          className="flex items-center gap-2 btn-secondary text-sm"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 text-green-400 text-sm font-medium transition-all active:scale-95 disabled:opacity-50"
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Actualizar
         </button>
       </div>
 
-      {/* Filtros de estado */}
-      <div className="flex gap-2 flex-wrap">
-        {ESTADOS.map((e) => (
-          <button
-            key={e.value}
-            onClick={() => setFiltroEstado(e.value)}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all border ${
-              filtroEstado === e.value
-                ? `${e.bg} ${e.color} border-current/30`
-                : 'bg-gray-800/60 text-gray-400 border-gray-700/80 hover:border-gray-600 hover:text-gray-300'
-            }`}
-          >
-            {e.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Filtros adicionales: categoría y severidad */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1.5 text-xs text-gray-500 shrink-0">
-          <Filter size={13} /> Filtrar:
+      {/* Barra de filtros — card unificada */}
+      <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-4 space-y-3">
+        {/* Tabs de estado */}
+        <div className="flex gap-1.5 flex-wrap">
+          {ESTADOS.map((e) => (
+            <button
+              key={e.value}
+              onClick={() => setFiltroEstado(e.value)}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all border ${
+                filtroEstado === e.value
+                  ? `${e.bg} ${e.color}`
+                  : 'bg-gray-800/50 text-gray-400 border-gray-700/60 hover:border-gray-600 hover:text-gray-300'
+              }`}
+            >
+              {e.label}
+            </button>
+          ))}
         </div>
 
-        <select
-          value={filtroTipo}
-          onChange={(e) => setFiltroTipo(e.target.value)}
-          className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
-        >
-          <option value="">Todas las categorías</option>
-          {CATEGORIAS_OPCIONES.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
+        {/* Divider */}
+        <div className="border-t border-gray-800" />
 
-        <select
-          value={filtroSeveridad}
-          onChange={(e) => setFiltroSeveridad(e.target.value)}
-          className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
-        >
-          <option value="">Todas las severidades</option>
-          {SEVERIDAD_OPCIONES.map((s) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
-        </select>
-
-        {hayFiltrosExtra && (
-          <button
-            onClick={limpiarFiltros}
-            className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-400 transition-colors border border-gray-700 hover:border-red-500/50 rounded-lg px-2.5 py-1.5"
+        {/* Filtros adicionales */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs text-gray-500 shrink-0">
+            <Filter size={13} /> Filtrar:
+          </div>
+          <select
+            value={filtroTipo}
+            onChange={(e) => setFiltroTipo(e.target.value)}
+            className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
           >
-            <X size={12} /> Limpiar
-          </button>
-        )}
+            <option value="">Todas las categorías</option>
+            {CATEGORIAS_OPCIONES.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+          <select
+            value={filtroSeveridad}
+            onChange={(e) => setFiltroSeveridad(e.target.value)}
+            className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
+          >
+            <option value="">Todas las severidades</option>
+            {SEVERIDAD_OPCIONES.map((s) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+          {hayFiltrosExtra && (
+            <button
+              onClick={limpiarFiltros}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-400 transition-colors border border-gray-700 hover:border-red-500/50 rounded-lg px-2.5 py-1.5"
+            >
+              <X size={12} /> Limpiar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Lista de reportes */}
@@ -435,7 +444,6 @@ export default function Moderacion() {
         </div>
       ) : (
         <div className="space-y-3">
-          <p className="text-xs text-gray-500 font-medium">{reportes.length} reporte(s) encontrado(s)</p>
           <AnimatePresence mode="popLayout">
             {reportes.map((r) => (
               <ReporteCard
