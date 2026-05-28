@@ -819,10 +819,10 @@ export default function Profile() {
                 ) : (
                   <div className="space-y-3">
                     {misReportes.map((r, idx) => {
-                      const cfg      = helpers.obtenerConfig(r.tipo_contaminacion);
-                      const sevCfg   = SEVERITY_CFG[r.nivel_severidad] ?? SEVERITY_CFG.bajo;
-                      const esPendiente = r.estado === 'pendiente';
-                      const accentColor = cfg?.color ?? '#22c55e';
+                      const cfg          = helpers.obtenerConfig(r.tipo_contaminacion);
+                      const sevCfg       = SEVERITY_CFG[r.nivel_severidad] ?? SEVERITY_CFG.bajo;
+                      const puedeGestionar = r.estado === 'pendiente' || r.estado === 'en_revision';
+                      const accentColor  = cfg?.color ?? '#22c55e';
                       return (
                         <motion.div
                           key={r.id_reporte}
@@ -891,15 +891,28 @@ export default function Profile() {
                                 </div>
                               </div>
 
-                              {/* Caja de ícono de categoría (solo sm+) */}
+                              {/* Thumbnail de evidencia o ícono de categoría (solo sm+) */}
                               <div
-                                className="hidden sm:flex shrink-0 self-start mt-0.5 w-14 h-14 rounded-xl items-center justify-center border"
+                                className="hidden sm:flex shrink-0 self-start mt-0.5 w-14 h-14 rounded-xl items-center justify-center border overflow-hidden"
                                 style={{
-                                  background: `${accentColor}0d`,
+                                  background: r.primera_imagen ? 'transparent' : `${accentColor}0d`,
                                   borderColor: `${accentColor}28`,
                                 }}
                               >
-                                <CategoryIcon tipo={r.tipo_contaminacion} color={accentColor} size={24} />
+                                {r.primera_imagen ? (
+                                  <img
+                                    src={r.primera_imagen}
+                                    alt="evidencia"
+                                    className="w-full h-full object-cover rounded-xl"
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }}
+                                  />
+                                ) : null}
+                                <div
+                                  className="w-full h-full items-center justify-center rounded-xl"
+                                  style={{ display: r.primera_imagen ? 'none' : 'flex', background: `${accentColor}0d` }}
+                                >
+                                  <CategoryIcon tipo={r.tipo_contaminacion} color={accentColor} size={24} />
+                                </div>
                               </div>
                             </div>
 
@@ -915,9 +928,9 @@ export default function Profile() {
                                 <Link
                                   to={`/reports/${r.id_reporte}`}
                                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-gray-400 hover:text-green-400 hover:bg-green-500/10 transition-colors"
-                                  title={esPendiente ? 'Ver, editar o eliminar' : 'Ver detalle'}
+                                  title={puedeGestionar ? 'Ver, editar o eliminar' : 'Ver detalle'}
                                 >
-                                  {esPendiente ? (
+                                  {puedeGestionar ? (
                                     <>
                                       <Pencil size={12} /> Gestionar
                                     </>
