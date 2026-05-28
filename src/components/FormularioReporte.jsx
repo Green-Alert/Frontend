@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import imageCompression from 'browser-image-compression';
-import { createReporte, analizarImagenIA } from '../services/api';
+import { createReporte, analizarImagenIA, sugerirContenidoReporte } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { reverseGeocode } from '../utils/geo';
 import {
@@ -100,6 +100,11 @@ export default function FormularioReporte() {
   //                categoria, nombre, confianza, etiquetas, mensajeError }
   const [iaAnalisis, setIaAnalisis] = useState({ estado: 'idle' });
   const iaInputRef = useRef(null);
+
+  // FE-31: sugerencia de título y descripción con IA a partir de imágenes.
+  // sugerIA = { estado: 'idle'|'analizando'|'aplicada'|'error', mensajeError? }
+  const [sugerIA, setSugerIA] = useState({ estado: 'idle' });
+  const sugerIAInputRef = useRef(null);
 
   const set = (key, val) => setForm(p => ({ ...p, [key]: val }));
 
@@ -233,7 +238,60 @@ export default function FormularioReporte() {
     setIaAnalisis({ estado: 'idle' });
   };
 
-  // GPS automático
+  // FE-31: sugerir título y descripción con IA a partir de imágenes.
+  const handleSugerirContenido = async (e) => {
+    const archivos = Array.from(e.target.files ?? []);
+    if (e.target) e.target.value = '';
+    if (!archivos.length) return;
+
+    const imagenes = archivos.filter(f => IMG_MIME.has(f.type)).slice(0, 3);
+    if (!imagenes.length) {
+      showToast('Selecciona al menos una imagen (JPG, PNG o WEBP).', 'error', 3500, {
+        position: 'top-center',
+        variant: 'ai',
+      });
+      return;
+    }
+
+    setSugerIA({ estado: 'analizando' });
+
+    try {
+      const fd = new FormData();
+      for (const img of imagenes) {
+        const comprimida = await imageCompression(img, {
+          maxSizeMB: 0.4,
+          maxWidthOrHeight: 512,
+          useWebWorker: true,
+          fileType: 'image/jpeg',
+        }).catch(() => img);
+        fd.append('files', comprimida, img.name);
+      }
+      if (form.tipo_contaminacion) fd.append('categoria', form.tipo_contaminacion);
+
+      const { data } = await sugerirContenidoReporte(fd);
+      const result = data?.data ?? data;
+
+      if (!result?.titulo || !result?.descripcion) throw new Error('Respuesta inválida');
+
+      set('titulo',      result.titulo);
+      set('descripcion', result.descripcion);
+      setSugerIA({ estado: 'aplicada' });
+
+      showToast('Título y descripción generados por IA', 'success', 4000, {
+        position: 'top-center',
+        variant: 'ai',
+        subtitle: 'Puedes editarlos antes de enviar el reporte.',
+      });
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'No se pudo generar la sugerencia.';
+      setSugerIA({ estado: 'error', mensajeError: msg });
+      showToast('Error al generar sugerencia', 'error', 4500, {
+        position: 'top-center',
+        variant: 'ai',
+        subtitle: msg,
+      });
+    }
+  };
   const handleGPS = () => {
     if (!navigator.geolocation) {
       showToast('Tu navegador no soporta geolocalización.', 'error');
@@ -390,8 +448,22 @@ export default function FormularioReporte() {
       }
 
       const res = await createReporte(payload);
-      const idReporte = res.data.data.reporte.id_reporte;
-      showToast('¡Reporte enviado correctamente!', 'success', 4000);
+      const idReporte       = res.data.data.reporte.id_reporte;
+      const evidenciaScore  = res.data.data.evidencia_score;
+
+      // FE-31 (BE-16): feedback del score de evidencia al usuario.
+      if (evidenciaScore?.accion === 'moderar') {
+        const primeraSenal = evidenciaScore.senales?.[0] ?? 'Evidencias con baja confianza.';
+        const masSeñales = (evidenciaScore.senales?.length ?? 0) > 1
+          ? ` (+${evidenciaScore.senales.length - 1} señal${evidenciaScore.senales.length > 2 ? 'es' : ''} más)`
+          : '';
+        showToast('Reporte enviado — en revisión', 'warning', 9000, {
+          position: 'top-center',
+          subtitle: `Score de evidencias: ${evidenciaScore.score}/100. ${primeraSenal}${masSeñales} Tu reporte será publicado una vez revisado por un moderador.`,
+        });
+      } else {
+        showToast('¡Reporte enviado correctamente!', 'success', 4000);
+      }
       navigate(`/reports/${idReporte}`);
     } catch (err) {
       showToast(err.response?.data?.message || 'Error al enviar el reporte. Intenta de nuevo.', 'error');
@@ -785,6 +857,103 @@ export default function FormularioReporte() {
                 )}
                 Describe el problema
               </h2>
+
+              {/* FE-31 · Asistente IA: sugerir título y descripción desde fotos */}
+              <div className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-indigo-500/5 p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <div className="shrink-0 w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <Sparkles size={20} className="text-purple-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-1.5">
+                      Redactar con IA
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        IA
+                      </span>
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Sube 1-3 fotos del problema y la IA redactará el título y la descripción por ti.
+                    </p>
+
+                    <input
+                      ref={sugerIAInputRef}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      multiple
+                      onChange={handleSugerirContenido}
+                      className="hidden"
+                    />
+
+                    {sugerIA.estado === 'idle' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => sugerIAInputRef.current?.click()}
+                          className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-200 text-sm font-medium transition-colors"
+                        >
+                          <Sparkles size={15} /> Sugerir título y descripción
+                        </button>
+                        <p className="text-[11px] text-gray-500 mt-1.5">
+                          JPG, PNG o WEBP · máximo 3 imágenes.
+                        </p>
+                      </>
+                    )}
+
+                    {sugerIA.estado === 'analizando' && (
+                      <div className="mt-3 rounded-lg bg-purple-500/10 border border-purple-500/30 p-3">
+                        <div className="flex items-center gap-2 text-purple-200 text-sm mb-2">
+                          <Loader2 size={14} className="animate-spin" />
+                          Generando redacción con IA…
+                        </div>
+                        <div className="space-y-1.5" aria-hidden="true">
+                          {[0, 1, 2].map((i) => (
+                            <div
+                              key={i}
+                              className="h-2 rounded-full bg-purple-500/20 overflow-hidden relative"
+                              style={{ width: `${90 - i * 20}%` }}
+                            >
+                              <div
+                                className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-400/40 to-transparent animate-pulse"
+                                style={{ animationDelay: `${i * 150}ms` }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {sugerIA.estado === 'aplicada' && (
+                      <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-green-500/15 border border-green-500/30 text-green-300 text-xs font-medium">
+                        <Check size={14} />
+                        Redacción aplicada por IA — puedes editarla libremente
+                        <button
+                          type="button"
+                          onClick={() => setSugerIA({ estado: 'idle' })}
+                          className="ml-1 text-gray-400 hover:text-gray-200"
+                          aria-label="Volver a generar"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    )}
+
+                    {sugerIA.estado === 'error' && (
+                      <div className="mt-3">
+                        <p className="text-xs text-red-400 flex items-center gap-1.5 mb-2">
+                          <AlertTriangle size={12} /> {sugerIA.mensajeError}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => { setSugerIA({ estado: 'idle' }); sugerIAInputRef.current?.click(); }}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-200 text-xs font-medium transition-colors"
+                        >
+                          <Sparkles size={14} /> Reintentar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
 
               {/* En LG+: sugerencias a la izquierda, campos a la derecha */}
               <div className={sugerencias.length > 0
