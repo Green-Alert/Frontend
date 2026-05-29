@@ -1,6 +1,6 @@
 ﻿<div align="center">
 
-  <img src="public/logo.png" alt="GreenAlert Logo" width="80" />
+  <img src="src/assets/GreenAlert - logo principal.png" alt="GreenAlert Logo" width="250" />
 
   <h1>GreenAlert &mdash; Frontend</h1>
 
