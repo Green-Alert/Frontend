@@ -144,8 +144,11 @@ export default function Navbar() {
                   onClick={() => setUserMenuOpen((v) => !v)}
                   className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-lg border border-gray-700 bg-gray-900 hover:border-gray-600 transition"
                 >
-                  <span className="w-6 h-6 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center text-green-400 text-xs font-bold">
-                    {user.nombre?.charAt(0).toUpperCase()}
+                  <span className="w-6 h-6 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center text-green-400 text-xs font-bold overflow-hidden shrink-0">
+                    {user.avatar_url
+                      ? <img src={user.avatar_url} alt={user.nombre} className="w-full h-full object-cover" />
+                      : user.nombre?.charAt(0).toUpperCase()
+                    }
                   </span>
                   <div className="text-left leading-tight hidden lg:block">
                     <p className="text-xs font-medium text-gray-200 max-w-[110px] truncate">{`${user.nombre}`.trim()}</p>
@@ -269,8 +272,11 @@ export default function Navbar() {
             <>
               {/* Info usuario en mobile */}
               <div className="flex items-center gap-3 px-3 py-3 bg-gray-900 rounded-lg border border-gray-800">
-                <span className="w-9 h-9 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center text-green-400 font-bold shrink-0">
-                  {user.nombre?.charAt(0).toUpperCase()}
+                <span className="w-9 h-9 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center text-green-400 font-bold shrink-0 overflow-hidden">
+                  {user.avatar_url
+                    ? <img src={user.avatar_url} alt={user.nombre} className="w-full h-full object-cover" />
+                    : user.nombre?.charAt(0).toUpperCase()
+                  }
                 </span>
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-200 truncate">{user.nombre}</p>
