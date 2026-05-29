@@ -69,6 +69,17 @@ const SEVERITY_ORDER = { critico: 4, alto: 3, medio: 2, bajo: 1 };
 
 const PAGE_SIZE = 20;
 
+const TRENDING_CACHE_KEY = 'ga-trending-weekly';
+
+function getLastFridayMidnight() {
+  const now = new Date();
+  const daysBack = (now.getDay() - 5 + 7) % 7; // days since last Friday (0 if today is Friday)
+  const d = new Date(now);
+  d.setDate(d.getDate() - daysBack);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 function getTypeLabel(tipo) {
   return helpers.obtenerConfig(tipo)?.nombre ?? tipo;
 }
@@ -138,8 +149,7 @@ function TrendCard({ r, rank, metric }) {
   return (
     <Link
       to={`/reports/${r.id_reporte}`}
-      className="group relative flex items-end shrink-0"
-      style={{ width: '168px' }}
+      className="group relative flex items-end h-full"
     >
       {/* Número de ranking — estilo Netflix (trazo sin relleno) */}
       <span
@@ -156,12 +166,12 @@ function TrendCard({ r, rank, metric }) {
       </span>
       {/* Tarjeta — se superpone al número desde la derecha */}
       <motion.div
-        className="relative z-10 ml-12 flex-1 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden group-hover:border-gray-600 transition-colors"
+        className="relative z-10 ml-12 flex-1 h-full bg-gray-900 border border-gray-800 rounded-xl overflow-hidden group-hover:border-gray-600 transition-colors flex flex-col"
         whileHover={{ y: -4 }}
         transition={{ duration: 0.18 }}
       >
-        <div className="h-[3px] w-full" style={{ background: color }} />
-        <div className="p-3 flex flex-col gap-2">
+        <div className="h-[3px] w-full shrink-0" style={{ background: color }} />
+        <div className="p-3 flex flex-col gap-2 flex-1">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
             style={{ background: `${color}22` }}
@@ -268,14 +278,54 @@ export default function Reports() {
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated  = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+fix/ajustes-bug-reportes
   // ── Trending interno: top-5 por likes y top-5 por vistas ────────────────
   const trending = useMemo(() => {
     if (reports.length < 2) return null;
     const byLikes  = [...reports].sort((a, b) => Number(b.votos_relevancia) - Number(a.votos_relevancia)).slice(0, 5);
     const byVistas = [...reports].sort((a, b) => Number(b.vistas) - Number(a.vistas)).slice(0, 5);
     if (!byLikes[0]?.votos_relevancia && !byVistas[0]?.vistas) return null;
-    return { likes: byLikes, vistas: byVistas };
+=======
+  // ── Trending semanal (Top-5, ranking se fija cada viernes) ──────────────
+  const [trendingIds, setTrendingIds] = useState(() => {
+    try {
+      const raw = localStorage.getItem(TRENDING_CACHE_KEY);
+      if (!raw) return null;
+      const { ids, computedAt } = JSON.parse(raw);
+      if (new Date(computedAt) >= getLastFridayMidnight()) return ids;
+      return null; // cache stale
+    } catch { return null; }
+  });
+
+  useEffect(() => {
+    if (reports.length < 2) return;
+    try {
+      const raw = localStorage.getItem(TRENDING_CACHE_KEY);
+      if (raw) {
+        const { computedAt } = JSON.parse(raw);
+        if (new Date(computedAt) >= getLastFridayMidnight()) return; // still valid until next Friday
+      }
+    } catch { /* ignore */ }
+    // Compute new ranking from current data
+    const byLikes  = [...reports].sort((a, b) => Number(b.votos_relevancia) - Number(a.votos_relevancia)).slice(0, 5);
+    const byVistas = [...reports].sort((a, b) => Number(b.vistas) - Number(a.vistas)).slice(0, 5);
+    if (!byLikes[0]?.votos_relevancia && !byVistas[0]?.vistas) return;
+    const ids = {
+      likes:  byLikes.map((r) => r.id_reporte),
+      vistas: byVistas.map((r) => r.id_reporte),
+    };
+    localStorage.setItem(TRENDING_CACHE_KEY, JSON.stringify({ ids, computedAt: new Date().toISOString() }));
+    setTrendingIds(ids);
   }, [reports]);
+
+  const trending = useMemo(() => {
+    if (!trendingIds || reports.length < 2) return null;
+    const byLikes  = trendingIds.likes.map((id) => reports.find((r) => r.id_reporte === id)).filter(Boolean);
+    const byVistas = trendingIds.vistas.map((id) => reports.find((r) => r.id_reporte === id)).filter(Boolean);
+    if (!byLikes.length && !byVistas.length) return null;
+ main
+    return { likes: byLikes, vistas: byVistas };
+  }, [trendingIds, reports]);
 
   const noData    = !loading && reports.length === 0 && !error;
   const noResults = !loading && reports.length > 0 && filtered.length === 0;
@@ -465,10 +515,14 @@ export default function Reports() {
         )}
       </AnimatePresence>
 
+ fix/ajustes-bug-reportes
       {/* ── TRENDING — Top 5 por likes y vistas, estilo Netflix ── */}
+=======
+      {/* ── TRENDING — Top 5 semanal por likes y vistas, estilo Netflix ── */}
+ main
       {!loading && trending && (
         <motion.section
-          className="space-y-4"
+          className="space-y-6"
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.38, delay: 0.05 }}
@@ -478,33 +532,35 @@ export default function Reports() {
               <Flame className="w-3.5 h-3.5 text-rose-400" />
             </span>
             <span className="text-xs font-bold text-gray-200 uppercase tracking-[0.14em]">En tendencia</span>
+            <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-800 border border-gray-700 text-[10px] text-gray-400">
+              <CalendarDays size={9} className="shrink-0" />
+              Actualiza cada viernes
+            </span>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Top likes */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-1.5 pl-1">
-                <Heart size={11} className="text-rose-400 fill-current" />
-                <span className="text-[11px] text-rose-300 font-semibold uppercase tracking-wide">Más populares</span>
-              </div>
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-dark">
-                {trending.likes.map((r, i) => (
-                  <TrendCard key={`l-${r.id_reporte}`} r={r} rank={i + 1} metric="likes" />
-                ))}
-              </div>
+          {/* Top likes — ancho completo */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-1.5 pl-1">
+              <Heart size={11} className="text-rose-400 fill-current" />
+              <span className="text-[11px] text-rose-300 font-semibold uppercase tracking-wide">Más populares</span>
             </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {trending.likes.map((r, i) => (
+                <TrendCard key={`l-${r.id_reporte}`} r={r} rank={i + 1} metric="likes" />
+              ))}
+            </div>
+          </div>
 
-            {/* Top vistas */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-1.5 pl-1">
-                <Eye size={11} className="text-blue-400" />
-                <span className="text-[11px] text-blue-300 font-semibold uppercase tracking-wide">Más vistos</span>
-              </div>
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-dark">
-                {trending.vistas.map((r, i) => (
-                  <TrendCard key={`v-${r.id_reporte}`} r={r} rank={i + 1} metric="vistas" />
-                ))}
-              </div>
+          {/* Top vistas — ancho completo */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-1.5 pl-1">
+              <Eye size={11} className="text-blue-400" />
+              <span className="text-[11px] text-blue-300 font-semibold uppercase tracking-wide">Más vistos</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {trending.vistas.map((r, i) => (
+                <TrendCard key={`v-${r.id_reporte}`} r={r} rank={i + 1} metric="vistas" />
+              ))}
             </div>
           </div>
         </motion.section>
