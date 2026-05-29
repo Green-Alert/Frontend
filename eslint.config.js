@@ -30,6 +30,24 @@ export default [
         Blob: 'readonly',
         Promise: 'readonly',
         process: 'readonly',
+ feat/108-pipeline-cicd-github-actions
+        // Browser APIs usadas en el proyecto
+        Notification: 'readonly',
+        crypto: 'readonly',
+        IntersectionObserver: 'readonly',
+        Image: 'readonly',
+        MutationObserver: 'readonly',
+        ResizeObserver: 'readonly',
+        performance: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
+        CustomEvent: 'readonly',
+        Event: 'readonly',
+        HTMLElement: 'readonly',
+        Element: 'readonly',
+        history: 'readonly',
+=======
+ main
       },
       parserOptions: {
         ecmaVersion: 2022,
@@ -42,9 +60,18 @@ export default [
     },
     rules: {
       ...reactPlugin.configs.recommended.rules,
+ feat/108-pipeline-cicd-github-actions
+      // Solo las dos reglas estables de react-hooks (evitar reglas experimentales del React Compiler)
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+      'react/react-in-jsx-scope': 'off',
+      'react/prop-types': 'off',
+      'react/no-unescaped-entities': 'warn',
+=======
       ...reactHooks.configs.recommended.rules,
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
+ main
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     },
   },
