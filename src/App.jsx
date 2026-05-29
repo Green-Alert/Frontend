@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
@@ -6,29 +7,28 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import { useFCM } from './hooks/useFCM';
-import Home from './pages/Home';
-import About from './pages/About';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Auth from './pages/Auth';
-import Dashboard from './pages/Dashboard';
-import Reports from './pages/Reports';
-import NewReport from './pages/NewReport';
-import ReportDetail from './pages/ReportDetail';
-import Trending from './pages/Trending';
-import NotFound from './pages/NotFound';
-import FormularioReporte from './components/FormularioReporte';
-import Profile from './pages/Profile';
-import Settings from './pages/Settings';
-import Moderacion from './pages/Moderacion';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import VerificarEmail from './pages/VerificarEmail';
-import AdminPanel from './pages/AdminPanel';
-import AdminUsuarios from './pages/AdminUsuarios';
-import PoliticaPrivacidad from './pages/PoliticaPrivacidad';
-import TerminosCondiciones from './pages/TerminosCondiciones';
-import FacebookCallback from './pages/FacebookCallback';
+
+// Páginas cargadas bajo demanda (code splitting por ruta) — FE-32
+const Home               = lazy(() => import('./pages/Home'));
+const Auth               = lazy(() => import('./pages/Auth'));
+const Dashboard          = lazy(() => import('./pages/Dashboard'));
+const Reports            = lazy(() => import('./pages/Reports'));
+const NewReport          = lazy(() => import('./pages/NewReport'));
+const ReportDetail       = lazy(() => import('./pages/ReportDetail'));
+const Trending           = lazy(() => import('./pages/Trending'));
+const NotFound           = lazy(() => import('./pages/NotFound'));
+const FormularioReporte  = lazy(() => import('./components/FormularioReporte'));
+const Profile            = lazy(() => import('./pages/Profile'));
+const Settings           = lazy(() => import('./pages/Settings'));
+const Moderacion         = lazy(() => import('./pages/Moderacion'));
+const ForgotPassword     = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword      = lazy(() => import('./pages/ResetPassword'));
+const VerificarEmail     = lazy(() => import('./pages/VerificarEmail'));
+const AdminPanel         = lazy(() => import('./pages/AdminPanel'));
+const AdminUsuarios      = lazy(() => import('./pages/AdminUsuarios'));
+const PoliticaPrivacidad = lazy(() => import('./pages/PoliticaPrivacidad'));
+const TerminosCondiciones = lazy(() => import('./pages/TerminosCondiciones'));
+const FacebookCallback   = lazy(() => import('./pages/FacebookCallback'));
 
 function HomeRoute() {
   const { user } = useAuth();
@@ -47,6 +47,7 @@ export default function App() {
       <ToastProvider>
         <AuthProvider>
           <FCMController />
+          <Suspense fallback={null}>
           <Routes>
             {/* Rutas públicas con Layout */}
             <Route path="/" element={<Layout />}>
@@ -96,6 +97,7 @@ export default function App() {
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
           <ToastContainer />
         </AuthProvider>
       </ToastProvider>
