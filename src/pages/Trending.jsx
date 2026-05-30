@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Flame, MapPin, Heart, Eye, Clock, ArrowLeft,
+  Flame, MapPin, Eye, Clock, ArrowLeft,
   Droplets, Trees, Wind, Trash2, Leaf, Waves, AlertTriangle,
 } from 'lucide-react';
 import { motion } from 'motion/react';

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Bell, ShieldCheck, LogOut, AlertTriangle, Download, Mail,
   User, Check, ChevronRight, Trash2, Power, Zap, ExternalLink,
@@ -345,7 +345,7 @@ export default function Settings() {
                       <span className="text-gray-500 ml-1">· fuente: {ubicacion.location.fuente ?? '—'}</span>
                     </p>
                   ) : (
-                    <p>Sin ubicación conocida. Pulsa "Actualizar mi ubicación" para detectarla.</p>
+                    <p>Sin ubicación conocida. Pulsa &quot;Actualizar mi ubicación&quot; para detectarla.</p>
                   )}
                   {ubicacion.error && (
                     <p className="text-amber-400 mt-1">

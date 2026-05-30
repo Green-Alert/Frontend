@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom';
 import {
   ShieldCheck, Clock, RefreshCw,
   MapPin, CheckCircle2,
-  Loader2, Eye, ArrowRight, Filter, X, MessageSquare, Image as ImageIcon,
+  Loader2, Eye, Filter, X, MessageSquare, Image as ImageIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getReportes, updateReporte, getReporteById } from '../services/api';
 import { useToast } from '../context/ToastContext';
-import { helpers, CONFIGURACION_CATEGORIAS, TIPOS_CONTAMINACION } from '../constants/categorias';
+import { helpers, CONFIGURACION_CATEGORIAS } from '../constants/categorias';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -297,6 +297,7 @@ export default function Moderacion() {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtroEstado, filtroTipo, filtroSeveridad]);
 
   useEffect(() => { fetchReportes(); }, [fetchReportes]);
@@ -438,7 +439,7 @@ export default function Moderacion() {
           <div className="text-center">
             <p className="text-gray-300 text-sm font-medium">Todo en orden</p>
             <p className="text-gray-600 text-xs mt-1">
-              No hay reportes con estado <span className="text-gray-400">"{getBadge(filtroEstado).label}"</span>
+              No hay reportes con estado <span className="text-gray-400">&quot;{getBadge(filtroEstado).label}&quot;</span>
             </p>
           </div>
         </div>

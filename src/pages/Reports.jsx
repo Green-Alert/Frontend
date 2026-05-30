@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Droplets, Trees, Flame, Wind, Trash2, Leaf, Search, Lightbulb,
@@ -241,6 +241,7 @@ export default function Reports() {
     if (groupFilter !== 'Todos' && typeFilter !== 'Todos') {
       if (!typesForGroup(groupFilter).includes(typeFilter)) setTypeFilter('Todos');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupFilter]);
 
   useEffect(() => { setPage(1); }, [search, groupFilter, typeFilter, statusFilter, severityFilter, sortBy]);

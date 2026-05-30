@@ -36,6 +36,7 @@ export default function GitHubCallback() {
         showToast(err.response?.data?.message || 'Error al iniciar sesión con GitHub.', 'error');
         navigate('/login', { replace: true });
       });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

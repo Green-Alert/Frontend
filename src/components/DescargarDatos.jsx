@@ -88,7 +88,7 @@ async function generarPDF(perfil, reportes, seleccion) {
     if (!logoBase64) return;
     const wSize = 90;
     const hSize = 90;
-    const gfx = doc.saveGraphicsState;
+    const _gfx = doc.saveGraphicsState;
     doc.setGState(new doc.GState({ opacity: 0.04 }));
     doc.addImage(logoBase64, 'PNG', (W - wSize) / 2, (pageH - hSize) / 2, wSize, hSize);
     doc.setGState(new doc.GState({ opacity: 1 }));
@@ -402,7 +402,7 @@ export default function DescargarDatos({ open, onClose }) {
       const nombre = await generarPDF(perfil, reportes, seleccion);
       setListo(true);
       showToast(`PDF descargado: ${nombre}`, 'success');
-    } catch (err) {
+    } catch {
       showToast('Error al generar el PDF.', 'error');
     } finally {
       setGenerando(false);

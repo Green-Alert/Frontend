@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, lazy, Suspense, useMemo, useCallback } from 'react';
+import { useEffect, useState, lazy, Suspense, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { checkHealth, getStats, getReportes, exportReportes, getStatsCategoria, getStatsTimeline, getHeatmapPoints, getZonasRiesgo, getAlertasPredictivas } from '../services/api';
 import {
@@ -255,7 +255,7 @@ export default function Dashboard() {
   const misReportes   = activity.filter(r => Number(r.id_usuario) === Number(user?.id_usuario));
   const misPendientes = misReportes.filter(r => r.estado === 'pendiente' || r.estado === 'en_revision').length;
   const misResueltos  = misReportes.filter(r => r.estado === 'resuelto').length;
-  const misCriticos   = misReportes.filter(r => r.nivel_severidad === 'critico' || r.nivel_severidad === 'alto').length;
+  const _misCriticos  = misReportes.filter(r => r.nivel_severidad === 'critico' || r.nivel_severidad === 'alto').length;
 
   // FE-21: % resolución calculado a partir de stats globales (sin NaN si total=0)
   const porcentajeResolucion = stats?.total_reportes > 0

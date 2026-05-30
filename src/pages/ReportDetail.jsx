@@ -4,7 +4,7 @@ import {
   Droplets, Trees, Flame, Wind, Trash2, Leaf,
   Waves, ArrowLeft, MapPin, Calendar, Eye,
   User, ShieldCheck, ImageOff, Sparkles,
-  Pencil, X, Check, AlertTriangle, Loader2,
+  Pencil, Check, AlertTriangle, Loader2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getReporteById, updateReporte, deleteReporte } from '../services/api';
