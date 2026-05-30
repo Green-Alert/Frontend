@@ -278,14 +278,6 @@ export default function Reports() {
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated  = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-fix/ajustes-bug-reportes
-  // ── Trending interno: top-5 por likes y top-5 por vistas ────────────────
-  const trending = useMemo(() => {
-    if (reports.length < 2) return null;
-    const byLikes  = [...reports].sort((a, b) => Number(b.votos_relevancia) - Number(a.votos_relevancia)).slice(0, 5);
-    const byVistas = [...reports].sort((a, b) => Number(b.vistas) - Number(a.vistas)).slice(0, 5);
-    if (!byLikes[0]?.votos_relevancia && !byVistas[0]?.vistas) return null;
-=======
   // ── Trending semanal (Top-5, ranking se fija cada viernes) ──────────────
   const [trendingIds, setTrendingIds] = useState(() => {
     try {
@@ -323,7 +315,6 @@ fix/ajustes-bug-reportes
     const byLikes  = trendingIds.likes.map((id) => reports.find((r) => r.id_reporte === id)).filter(Boolean);
     const byVistas = trendingIds.vistas.map((id) => reports.find((r) => r.id_reporte === id)).filter(Boolean);
     if (!byLikes.length && !byVistas.length) return null;
- main
     return { likes: byLikes, vistas: byVistas };
   }, [trendingIds, reports]);
 
@@ -515,11 +506,7 @@ fix/ajustes-bug-reportes
         )}
       </AnimatePresence>
 
- fix/ajustes-bug-reportes
-      {/* ── TRENDING — Top 5 por likes y vistas, estilo Netflix ── */}
-=======
       {/* ── TRENDING — Top 5 semanal por likes y vistas, estilo Netflix ── */}
- main
       {!loading && trending && (
         <motion.section
           className="space-y-6"
