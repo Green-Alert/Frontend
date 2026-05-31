@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # ── SERVICIO DE DESARROLLO (Vite Dev Server con Node 20) ────────────────
+  frontend-dev:
+    container_name: green-alert-frontend-dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: green-alert-frontend:dev
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+      - VITE_ENV=development
+    env_file:
+      - .env
+    volumes:
+      # Sincronizar directorios de código fuente para habilitar Hot Module Replacement (HMR)
+      - ./src:/app/src:ro
+      - ./public:/app/public:ro
+      - ./index.html:/app/index.html:ro
+      - ./vite.config.js:/app/vite.config.js:ro
+      - ./tailwind.config.js:/app/tailwind.config.js:ro
+      - ./postcss.config.js:/app/postcss.config.js:ro
+      # Evitar que node_modules local sobrescriba el del contenedor (muy crítico para Windows/WSL/Mac)
+      - /app/node_modules
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    networks:
+      - green-alert-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── SERVICIO DE PRODUCCIÓN (Nginx Seguro sin root) ──────────────────────
+  frontend-prod:
+    container_name: green-alert-frontend-prod
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      # Argumentos de construcción pasados desde el archivo .env o variables del host
+      # Requerido porque Vite inyecta las variables estáticamente en el bundle de JS
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+        VITE_APP_NAME: ${VITE_APP_NAME:-GreenAlert}
+        VITE_APP_VERSION: ${VITE_APP_VERSION:-2.0.0}
+        VITE_ENV: ${VITE_ENV:-production}
+        VITE_ENABLE_MAPS: ${VITE_ENABLE_MAPS:-true}
+        VITE_ENABLE_NOTIFICATIONS: ${VITE_ENABLE_NOTIFICATIONS:-true}
+        VITE_ENABLE_IA_FEATURES: ${VITE_ENABLE_IA_FEATURES:-false}
+        VITE_MAPBOX_TOKEN: ${VITE_MAPBOX_TOKEN:-your_mapbox_token_here}
+        VITE_GOOGLE_MAPS_KEY: ${VITE_GOOGLE_MAPS_KEY:-your_google_maps_key_here}
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-AIzaSyBMMamcR8KTSMc60LQvsXdyUAvnbN0xspY}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-green-alert-1.firebaseapp.com}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-green-alert-1}
+        VITE_FIREBASE_STORAGE_BUCKET: ${VITE_FIREBASE_STORAGE_BUCKET:-green-alert-1.firebasestorage.app}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID:-141245905908}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-1:141245905908:web:8074ab75778af7c94f97a1}
+        VITE_FIREBASE_VAPID_KEY: ${VITE_FIREBASE_VAPID_KEY:-BD3e67M0AI8IpfsXsMq3K-6LSQb3aiLRPR9vARMbqZ2Y0-RhbEbqQg4NOOyYtnCpmabUAuuH3vPhXKCsQtGeXsI}
+    image: green-alert-frontend:latest
+    ports:
+      # Nginx-unprivileged corre internamente en el 8080.
+      # Lo mapeamos al puerto 80 estándar del host de producción (o 8080 si se prefiere).
+      - "80:8080"
+    restart: unless-stopped
+    networks:
+      - green-alert-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  green-alert-net:
+    driver: bridge
