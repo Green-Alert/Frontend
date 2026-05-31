@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   User, Mail, Phone, Calendar, ShieldCheck, Pencil, Lock,
-  X, Eye, EyeOff, Check, Camera, ChevronDown, ChevronUp,
+  X, Eye, EyeOff, Check, Camera,
   FileText, Loader2, MapPin, Clock, ChevronLeft, ChevronRight,
   AlertTriangle, Plus, Leaf, Flame, Waves, Droplets, Wind,
   Volume2, Sun, Mountain, Trash2, HelpCircle, ExternalLink, Sparkles,
@@ -220,7 +220,7 @@ export default function Profile() {
   const [editErrors, setEditErrors] = useState({});
 
   // ── Cambiar contraseña (acordeón) ─────────────────────────────────────────
-  const [pwOpen,   setPwOpen]   = useState(false);
+  const [_pwOpen,  setPwOpen]   = useState(false);
   const [pwForm,   setPwForm]   = useState({ actual: '', nueva: '', confirmar: '' });
   const [pwErrors, setPwErrors] = useState({});
   const [pwSaving, setPwSaving] = useState(false);
@@ -312,6 +312,7 @@ export default function Profile() {
         }
       })
       .finally(() => setLoadingData(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Guardar perfil ────────────────────────────────────────────────────────

@@ -16,8 +16,8 @@ export default function LineChart({ data = [], bucket = 'week', color = '#22c55e
 
   const [hover, setHover] = useState(null);
 
-  const { points, max, xs, areaPath, linePath } = useMemo(() => {
-    if (!data.length) return { points: [], max: 0, xs: [], areaPath: '', linePath: '' };
+  const { points, max, areaPath, linePath } = useMemo(() => {
+    if (!data.length) return { points: [], max: 0, areaPath: '', linePath: '' };
     const max = Math.max(...data.map(d => Number(d.total) || 0), 1);
     const innerW = W - PAD.left - PAD.right;
     const innerH = H - PAD.top - PAD.bottom;
@@ -32,7 +32,8 @@ export default function LineChart({ data = [], bucket = 'week', color = '#22c55e
     const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
     const areaPath = `${linePath} L ${points.at(-1).x} ${PAD.top + innerH} L ${points[0].x} ${PAD.top + innerH} Z`;
 
-    return { points, max, xs: points.map(p => p.x), areaPath, linePath };
+    return { points, max, areaPath, linePath };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   if (!data.length) {

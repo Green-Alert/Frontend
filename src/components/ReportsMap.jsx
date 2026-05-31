@@ -1,4 +1,4 @@
-﻿import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -112,7 +112,6 @@ function HeatLayer({ points }) {
           SEVERIDAD_INTENSIDAD[p.nivel_severidad] ?? 0.4,
         ]);
       if (!heatPoints.length) return;
-      // eslint-disable-next-line new-cap
       layerRef.current = L.heatLayer(heatPoints, {
         radius: 28,
         blur: 22,

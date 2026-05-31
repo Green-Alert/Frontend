@@ -36,6 +36,7 @@ export default function FacebookCallback() {
         showToast(err.response?.data?.message || 'Error al iniciar sesión con Facebook.', 'error');
         navigate('/login', { replace: true });
       });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

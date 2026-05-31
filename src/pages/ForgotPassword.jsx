@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, ArrowLeft, Leaf } from 'lucide-react';
+import { Mail, ArrowLeft } from 'lucide-react';
 import { motion } from 'motion/react';
 import { forgotPassword } from '../services/api';
 import NebulaBackground from '../components/NebulaBackground';

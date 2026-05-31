@@ -111,7 +111,7 @@ function OAuthButtons({ oauthLoading, onGoogle, onFacebook, label = 'continúa' 
 export default function Auth() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { login, register, loginWithGoogle, loginWithFacebook } = useAuth();
+  const { login, register, loginWithGoogle, loginWithFacebook: _loginWithFacebook } = useAuth();
   const { showToast } = useToast();
 
   // Estado de modo + dirección de la transición

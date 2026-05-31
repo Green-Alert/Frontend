@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Users, Search, Shield, ShieldCheck, UserCircle,
   CheckCircle2, XCircle, Trash2, ChevronLeft, ChevronRight,
-  Loader2, AlertTriangle, RefreshCw, Filter,
+  Loader2, AlertTriangle, RefreshCw,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAdminUsuarios, cambiarRolUsuario, cambiarEstadoUsuario, eliminarUsuarioAdmin } from '../services/api';
@@ -65,7 +65,7 @@ function ConfirmModal({ message, onConfirm, onCancel, confirmLabel = 'Confirmar'
 // ── Fila de usuario ───────────────────────────────────────────────────────────
 
 function UsuarioRow({ usuario, onCambiarRol, onToggleEstado, onEliminar, currentUserId, loadingId }) {
-  const RolIcon = rolIcon[usuario.rol] ?? UserCircle;
+  const _RolIcon = rolIcon[usuario.rol] ?? UserCircle;
   const isMe = usuario.id_usuario === currentUserId;
   const busy = loadingId === usuario.id_usuario;
 
@@ -201,6 +201,7 @@ export default function AdminUsuarios() {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, search, filtroRol, filtroActivo]);
 
   useEffect(() => { fetchUsuarios(); }, [fetchUsuarios]);
