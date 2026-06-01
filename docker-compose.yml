@@ -1,0 +1,51 @@
+name: green-alert-frontend
+
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  Docker Compose STANDALONE – Frontend (Producción)                      ║
+# ║                                                                          ║
+# ║  Uso:                                                                    ║
+# ║    1. Copia .env.example → .env y rellena los valores reales             ║
+# ║    2. docker compose up --build -d                                       ║
+# ║                                                                          ║
+# ║  Las variables VITE_* se hornean (bake) en el bundle estático durante    ║
+# ║  el build. No se inyectan en tiempo de ejecución; por eso se pasan como  ║
+# ║  build args y NO como env_file del contenedor en ejecución.              ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+services:
+  frontend:
+    container_name: green-alert-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      # Las variables VITE_* son leídas por Docker Compose desde el .env
+      # del directorio actual y pasadas al build de Vite como ARGs.
+      args:
+        VITE_API_URL:                    ${VITE_API_URL}
+        VITE_APP_NAME:                   ${VITE_APP_NAME:-GreenAlert}
+        VITE_APP_VERSION:                ${VITE_APP_VERSION:-2.0.0}
+        VITE_ENV:                        ${VITE_ENV:-production}
+        VITE_ENABLE_MAPS:                ${VITE_ENABLE_MAPS:-true}
+        VITE_ENABLE_NOTIFICATIONS:       ${VITE_ENABLE_NOTIFICATIONS:-true}
+        VITE_ENABLE_IA_FEATURES:         ${VITE_ENABLE_IA_FEATURES:-false}
+        VITE_MAPBOX_TOKEN:               ${VITE_MAPBOX_TOKEN:-}
+        VITE_GOOGLE_MAPS_KEY:            ${VITE_GOOGLE_MAPS_KEY:-}
+        VITE_FIREBASE_API_KEY:           ${VITE_FIREBASE_API_KEY}
+        VITE_FIREBASE_AUTH_DOMAIN:       ${VITE_FIREBASE_AUTH_DOMAIN}
+        VITE_FIREBASE_PROJECT_ID:        ${VITE_FIREBASE_PROJECT_ID}
+        VITE_FIREBASE_STORAGE_BUCKET:    ${VITE_FIREBASE_STORAGE_BUCKET}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID}
+        VITE_FIREBASE_APP_ID:            ${VITE_FIREBASE_APP_ID}
+        VITE_FIREBASE_VAPID_KEY:         ${VITE_FIREBASE_VAPID_KEY}
+    image: green-alert-frontend:latest
+    restart: unless-stopped
+    ports:
+      # nginx-unprivileged escucha en 8080 → se publica en el puerto 80 del host
+      - "80:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
