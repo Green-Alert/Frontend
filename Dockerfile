@@ -1,6 +1,11 @@
 # ── Stage 1: Base (Entorno Común) ──────────────────────────────────────────
 FROM node:20-alpine AS base
 
+LABEL org.opencontainers.image.title="Green Alert Frontend" \
+      org.opencontainers.image.description="SPA React + Vite para Green Alert" \
+      org.opencontainers.image.source="https://github.com/green-alert" \
+      org.opencontainers.image.licenses="MIT"
+
 # Definir directorio de trabajo principal
 WORKDIR /app
 
@@ -88,6 +93,10 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Exponer el puerto 8080
 EXPOSE 8080
+
+# Health check: verifica que nginx sirve el index.html correctamente
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q --spider http://localhost:8080/ || exit 1
 
 # Comando para arrancar Nginx en primer plano
 CMD ["nginx", "-g", "daemon off;"]

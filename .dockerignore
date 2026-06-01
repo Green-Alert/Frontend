@@ -13,4 +13,3 @@ build
 *.md
 Dockerfile
 docker-compose.yml
-nginx
