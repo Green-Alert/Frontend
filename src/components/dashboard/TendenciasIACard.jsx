@@ -10,17 +10,6 @@ import { helpers } from '../../constants/categorias';
  * Muestra agregados de la clasificación IA: KPIs, top etiquetas, distribución
  * de confianza y evolución temporal (procesados vs aceptados).
  */
-const KpiCard = ({ icon: Icon, label, value, hint, color = 'text-violet-400' }) => (
-  <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-    <div className="flex items-center justify-between mb-1">
-      <p className="text-[11px] uppercase tracking-wider text-gray-500">{label}</p>
-      <Icon size={14} className={color} />
-    </div>
-    <p className="text-2xl font-bold text-white tabular-nums">{value}</p>
-    {hint && <p className="text-[11px] text-gray-500 mt-1">{hint}</p>}
-  </div>
-);
-
 const Section = ({ title, children, hint }) => (
   <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-4">
     <div className="mb-3">
