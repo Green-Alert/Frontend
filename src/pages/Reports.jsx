@@ -4,10 +4,12 @@ import {
   Droplets, Trees, Flame, Wind, Trash2, Leaf, Search, Lightbulb,
   AlertTriangle, Waves, ChevronLeft, ChevronRight, CalendarDays,
   User, Plus, LayoutGrid, List, X, MapPin, Clock, Heart, Eye, AlertCircle,
+  Download, Building2, FileText,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getReportes } from '../services/api';
+import { getReportes, getTrendingReportes, getMisReportes, exportReportes, toggleLikeReporte } from '../services/api';
 import { helpers } from '../constants/categorias';
+import { useAuth } from '../context/AuthContext';
 import {
   ESTADO_REPORTE_BADGE_CLASS,
   ESTADO_REPORTE_DOT_CLASS,
@@ -52,25 +54,15 @@ const GRUPOS = [
 ];
 
 const SORT_OPTIONS = [
-  { value: 'newest',   label: 'Más recientes' },
-  { value: 'oldest',   label: 'Más antiguos' },
-  { value: 'severity', label: 'Mayor severidad' },
+  { value: 'newest',     label: 'Más recientes' },
+  { value: 'oldest',     label: 'Más antiguos' },
+  { value: 'severity',   label: 'Mayor severidad' },
+  { value: 'relevancia', label: 'Más relevantes' },
 ];
 
 const SEVERITY_ORDER = { critico: 4, alto: 3, medio: 2, bajo: 1 };
 
 const PAGE_SIZE = 20;
-
-const TRENDING_CACHE_KEY = 'ga-trending-weekly';
-
-function getLastFridayMidnight() {
-  const now = new Date();
-  const daysBack = (now.getDay() - 5 + 7) % 7; // days since last Friday (0 if today is Friday)
-  const d = new Date(now);
-  d.setDate(d.getDate() - daysBack);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
 
 function getTypeLabel(tipo) {
   return helpers.obtenerConfig(tipo)?.nombre ?? tipo;
@@ -191,8 +183,16 @@ function TrendCard({ r, rank, metric }) {
 
 export default function Reports() {
   const navigate = useNavigate();
+  const { user }  = useAuth();
+
+  const isEntidad  = user?.rol === 'entidad';
+  const canExport  = user?.rol === 'admin' || user?.rol === 'moderador';
+
+  const [activeTab,      setActiveTab]      = useState('todos');
+  const [exportLoading,  setExportLoading]  = useState(false);
 
   const [reports,        setReports]        = useState([]);
+  const [totalBackend,   setTotalBackend]   = useState(0);
   const [loading,        setLoading]        = useState(true);
   const [error,          setError]          = useState('');
   const [search,         setSearch]         = useState('');
@@ -215,11 +215,19 @@ export default function Reports() {
       setLoading(true);
       setError('');
       try {
-        const params = {};
-        if (typeFilter   !== 'Todos') params.tipo_contaminacion = typeFilter;
-        if (statusFilter !== 'Todos') params.estado = statusFilter;
-        const { data } = await getReportes(params);
-        setReports(data.data.reportes ?? []);
+        if (activeTab === 'mis') {
+          const { data } = await getMisReportes({ limit: 100 });
+          setReports(data.data.reportes ?? []);
+          setTotalBackend(data.data.total ?? 0);
+        } else {
+          const params = {};
+          if (typeFilter   !== 'Todos') params.tipo_contaminacion = typeFilter;
+          if (statusFilter !== 'Todos') params.estado = statusFilter;
+          params.limit = 100;
+          const { data } = await getReportes(params);
+          setReports(data.data.reportes ?? []);
+          setTotalBackend(data.data.total ?? 0);
+        }
       } catch {
         setError('No se pudo cargar la lista de reportes.');
       } finally {
@@ -227,7 +235,7 @@ export default function Reports() {
       }
     };
     fetchReports();
-  }, [typeFilter, statusFilter]);
+  }, [typeFilter, statusFilter, activeTab]);
 
   useEffect(() => {
     if (groupFilter !== 'Todos' && typeFilter !== 'Todos') {
@@ -253,8 +261,9 @@ export default function Reports() {
   });
 
   const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === 'oldest')   return new Date(a.created_at) - new Date(b.created_at);
-    if (sortBy === 'severity') return (SEVERITY_ORDER[b.nivel_severidad] ?? 0) - (SEVERITY_ORDER[a.nivel_severidad] ?? 0);
+    if (sortBy === 'oldest')     return new Date(a.created_at) - new Date(b.created_at);
+    if (sortBy === 'severity')   return (SEVERITY_ORDER[b.nivel_severidad] ?? 0) - (SEVERITY_ORDER[a.nivel_severidad] ?? 0);
+    if (sortBy === 'relevancia') return (Number(b.votos_relevancia) * 3 + Number(b.vistas)) - (Number(a.votos_relevancia) * 3 + Number(a.vistas));
     return new Date(b.created_at) - new Date(a.created_at);
   });
 
@@ -273,45 +282,29 @@ export default function Reports() {
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated  = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // ── Trending semanal (Top-5, ranking se fija cada viernes) ──────────────
-  const [trendingIds, setTrendingIds] = useState(() => {
-    try {
-      const raw = localStorage.getItem(TRENDING_CACHE_KEY);
-      if (!raw) return null;
-      const { ids, computedAt } = JSON.parse(raw);
-      if (new Date(computedAt) >= getLastFridayMidnight()) return ids;
-      return null; // cache stale
-    } catch { return null; }
-  });
+  // ── Trending real desde el backend (/reportes/trending) ──────────────────
+  const [trending,        setTrending]        = useState(null);
+  const [trendingLoading, setTrendingLoading] = useState(true);
 
   useEffect(() => {
-    if (reports.length < 2) return;
-    try {
-      const raw = localStorage.getItem(TRENDING_CACHE_KEY);
-      if (raw) {
-        const { computedAt } = JSON.parse(raw);
-        if (new Date(computedAt) >= getLastFridayMidnight()) return; // still valid until next Friday
-      }
-    } catch { /* ignore */ }
-    // Compute new ranking from current data
-    const byLikes  = [...reports].sort((a, b) => Number(b.votos_relevancia) - Number(a.votos_relevancia)).slice(0, 5);
-    const byVistas = [...reports].sort((a, b) => Number(b.vistas) - Number(a.vistas)).slice(0, 5);
-    if (!byLikes[0]?.votos_relevancia && !byVistas[0]?.vistas) return;
-    const ids = {
-      likes:  byLikes.map((r) => r.id_reporte),
-      vistas: byVistas.map((r) => r.id_reporte),
-    };
-    localStorage.setItem(TRENDING_CACHE_KEY, JSON.stringify({ ids, computedAt: new Date().toISOString() }));
-    setTrendingIds(ids);
-  }, [reports]);
-
-  const trending = useMemo(() => {
-    if (!trendingIds || reports.length < 2) return null;
-    const byLikes  = trendingIds.likes.map((id) => reports.find((r) => r.id_reporte === id)).filter(Boolean);
-    const byVistas = trendingIds.vistas.map((id) => reports.find((r) => r.id_reporte === id)).filter(Boolean);
-    if (!byLikes.length && !byVistas.length) return null;
-    return { likes: byLikes, vistas: byVistas };
-  }, [trendingIds, reports]);
+    setTrendingLoading(true);
+    getTrendingReportes({ limit: 10 })
+      .then(({ data }) => {
+        const all = data.data.reportes ?? [];
+        // Separar en dos listas: top-5 por likes (votos_relevancia > 0) y top-5 por vistas
+        const byLikes  = [...all]
+          .filter((r) => Number(r.votos_relevancia) > 0)
+          .sort((a, b) => Number(b.votos_relevancia) - Number(a.votos_relevancia))
+          .slice(0, 5);
+        const byVistas = [...all]
+          .sort((a, b) => Number(b.vistas) - Number(a.vistas))
+          .slice(0, 5);
+        if (!byLikes.length && !byVistas.length) { setTrending(null); return; }
+        setTrending({ likes: byLikes, vistas: byVistas });
+      })
+      .catch(() => setTrending(null))
+      .finally(() => setTrendingLoading(false));
+  }, []);
 
   const noData    = !loading && reports.length === 0 && !error;
   const noResults = !loading && reports.length > 0 && filtered.length === 0;
@@ -331,6 +324,45 @@ export default function Reports() {
     setStatusFilter('Todos');
     setSeverityFilter('Todos');
     setSortBy('newest');
+  }
+
+  const [likesMap, setLikesMap] = useState({});
+
+  function getLikeState(r) {
+    const ov = likesMap[r.id_reporte];
+    return ov ?? { liked: !!r.liked_by_me, count: Number(r.votos_relevancia) || 0 };
+  }
+
+  async function handleLike(e, r) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) { navigate('/login'); return; }
+    const id  = r.id_reporte;
+    const cur = getLikeState(r);
+    const next = { liked: !cur.liked, count: cur.liked ? Math.max(0, cur.count - 1) : cur.count + 1 };
+    setLikesMap(prev => ({ ...prev, [id]: next }));
+    try { await toggleLikeReporte(id); }
+    catch { setLikesMap(prev => ({ ...prev, [id]: cur })); }
+  }
+
+  async function handleExport() {
+    setExportLoading(true);
+    try {
+      const { data } = await exportReportes({});
+      const blob = new Blob([data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `greenalert_reportes_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      /* silent — server will respond with 403 if not admin/mod */
+    } finally {
+      setExportLoading(false);
+    }
   }
 
   const selectCls = 'bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-300 focus:outline-none focus:border-green-500 transition-colors disabled:opacity-40';
@@ -360,13 +392,75 @@ export default function Reports() {
               ? 'Cargando...'
               : noData
                 ? 'Sin reportes aún'
-                : <><span className="text-green-400 font-semibold">{sorted.length}</span> reporte{sorted.length !== 1 ? 's' : ''} encontrado{sorted.length !== 1 ? 's' : ''}</>}
+                : activeFilters.length > 0
+                  ? <><span className="text-green-400 font-semibold">{sorted.length}</span> resultado{sorted.length !== 1 ? 's' : ''} filtrado{sorted.length !== 1 ? 's' : ''} de <span className="text-gray-300">{totalBackend}</span> totales</>
+                  : <><span className="text-green-400 font-semibold">{totalBackend}</span> reporte{totalBackend !== 1 ? 's' : ''} registrado{totalBackend !== 1 ? 's' : ''}</>
+            }
           </p>
         </div>
-        <Link to="/reports/new" className="btn-primary text-sm self-start sm:self-auto inline-flex items-center gap-2 shrink-0">
-          <Plus size={15} /> Nuevo reporte
-        </Link>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {canExport && (
+            <button
+              onClick={handleExport}
+              disabled={exportLoading}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800 border border-gray-700 text-sm text-gray-300 hover:border-gray-500 hover:text-white transition-colors disabled:opacity-40"
+              title="Exportar reportes a CSV"
+            >
+              <Download size={14} className={exportLoading ? 'animate-bounce' : ''} />
+              {exportLoading ? 'Exportando…' : 'Excel'}
+            </button>
+          )}
+          <Link to="/reports/new" className="btn-primary text-sm inline-flex items-center gap-2 shrink-0">
+            <Plus size={15} /> Nuevo reporte
+          </Link>
+        </div>
       </motion.div>
+
+      {/* ── TABS (solo usuarios autenticados) ── */}
+      {user && (
+        <motion.div
+          className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <button
+            onClick={() => { setActiveTab('todos'); setPage(1); }}
+            className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === 'todos' ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <FileText size={13} /> Todos
+          </button>
+          <button
+            onClick={() => { setActiveTab('mis'); setPage(1); }}
+            className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === 'mis' ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <User size={13} /> Mis reportes
+          </button>
+        </motion.div>
+      )}
+
+      {/* ── BANNER ENTIDAD ── */}
+      {isEntidad && activeTab === 'todos' && (
+        <motion.div
+          className="flex items-start gap-3 bg-blue-500/8 border border-blue-500/20 rounded-xl px-4 py-3 text-sm"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Building2 size={15} className="text-blue-400 shrink-0 mt-0.5" />
+          <span className="text-blue-300">
+            Estás viendo todos los reportes públicos.
+            {' '}Para gestionar los reportes asignados a tu entidad, visita{' '}
+            <Link to="/entidad" className="underline underline-offset-2 hover:text-white transition-colors">
+              tu panel de entidad →
+            </Link>
+          </span>
+        </motion.div>
+      )}
 
       {/* ── PANEL DE FILTROS ── */}
       <motion.div
@@ -501,8 +595,8 @@ export default function Reports() {
         )}
       </AnimatePresence>
 
-      {/* ── TRENDING — Top 5 semanal por likes y vistas, estilo Netflix ── */}
-      {!loading && trending && (
+      {/* ── TRENDING ── */}
+      {(trendingLoading || trending) && (
         <motion.section
           className="space-y-6"
           initial={{ opacity: 0, y: 14 }}
@@ -515,11 +609,20 @@ export default function Reports() {
             </span>
             <span className="text-xs font-bold text-gray-200 uppercase tracking-[0.14em]">En tendencia</span>
             <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-800 border border-gray-700 text-[10px] text-gray-400">
-              <CalendarDays size={9} className="shrink-0" />
-              Actualiza cada viernes
+              Top de la semana
             </span>
           </div>
 
+          {/* Skeleton de carga del trending */}
+          {trendingLoading && !trending && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="animate-pulse bg-gray-900 border border-gray-800 rounded-xl h-36" />
+              ))}
+            </div>
+          )}
+
+          {trending && (<>
           {/* Top likes — ancho completo */}
           <div className="space-y-3">
             <div className="flex items-center gap-1.5 pl-1">
@@ -545,6 +648,7 @@ export default function Reports() {
               ))}
             </div>
           </div>
+          </>)}
         </motion.section>
       )}
 
@@ -626,6 +730,7 @@ export default function Reports() {
                 const sinConfirmar = estadoSeguimiento === 'pendiente';
                 const isCritico    = r.nivel_severidad === 'critico';
                 const isAlto       = r.nivel_severidad === 'alto';
+                const likeState    = getLikeState(r);
 
                 return (
                   <motion.div
@@ -698,10 +803,15 @@ export default function Reports() {
 
                       {/* Métricas: likes + vistas */}
                       <div className="flex items-center gap-3 text-[11px] text-gray-500">
-                        <span className={`inline-flex items-center gap-1 ${r.liked_by_me ? 'text-rose-300' : ''}`} title={`${Number(r.votos_relevancia) || 0} ${(Number(r.votos_relevancia) || 0) === 1 ? 'like' : 'likes'}`}>
-                          <Heart size={11} className={r.liked_by_me ? 'fill-current' : ''} />
-                          <span className="tabular-nums">{Number(r.votos_relevancia) || 0}</span>
-                        </span>
+                        <motion.button
+                          onClick={(e) => handleLike(e, r)}
+                          className={`inline-flex items-center gap-1 transition-colors ${likeState.liked ? 'text-rose-400' : 'text-gray-500 hover:text-rose-400'}`}
+                          whileTap={{ scale: 0.78 }}
+                          title={`${likeState.count} ${likeState.count === 1 ? 'like' : 'likes'}${!user ? ' — inicia sesión para votar' : ''}`}
+                        >
+                          <Heart size={11} className={likeState.liked ? 'fill-current' : ''} />
+                          <span className="tabular-nums">{likeState.count}</span>
+                        </motion.button>
                         <span className="inline-flex items-center gap-1" title={`${Number(r.vistas) || 0} vistas`}>
                           <Eye size={11} />
                           <span className="tabular-nums">{Number(r.vistas) || 0}</span>
@@ -757,6 +867,7 @@ export default function Reports() {
                 const estadoSeguimiento = getEstadoSeguimientoReporte(r);
                 const sinConfirmar = estadoSeguimiento === 'pendiente';
                 const isCritico    = r.nivel_severidad === 'critico';
+                const likeState    = getLikeState(r);
                 return (
                   <motion.div
                     key={r.id_reporte}
@@ -800,10 +911,15 @@ export default function Reports() {
 
                     {/* Columna 4 — Métricas (84 px fijo, alineado a la derecha) */}
                     <div className="hidden sm:flex items-center justify-end gap-2.5 w-[84px] shrink-0 text-[11px] text-gray-500">
-                      <span className={`inline-flex items-center gap-1 ${r.liked_by_me ? 'text-rose-400' : ''}`}>
-                        <Heart size={10} className={r.liked_by_me ? 'fill-current' : ''} />
-                        <span className="tabular-nums">{Number(r.votos_relevancia) || 0}</span>
-                      </span>
+                      <motion.button
+                        onClick={(e) => handleLike(e, r)}
+                        className={`inline-flex items-center gap-1 transition-colors ${likeState.liked ? 'text-rose-400' : 'text-gray-500 hover:text-rose-400'}`}
+                        whileTap={{ scale: 0.78 }}
+                        title={`${likeState.count} ${likeState.count === 1 ? 'like' : 'likes'}${!user ? ' — inicia sesión para votar' : ''}`}
+                      >
+                        <Heart size={10} className={likeState.liked ? 'fill-current' : ''} />
+                        <span className="tabular-nums">{likeState.count}</span>
+                      </motion.button>
                       <span className="inline-flex items-center gap-1">
                         <Eye size={10} />
                         <span className="tabular-nums">{Number(r.vistas) || 0}</span>
