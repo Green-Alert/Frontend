@@ -1,6 +1,6 @@
 import { useEffect, useState, lazy, Suspense, useMemo, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { checkHealth, getStats, getReportes, exportReportes, getStatsCategoria, getStatsTimeline, getHeatmapPoints, getZonasRiesgo, getAlertasPredictivas } from '../services/api';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { checkHealth, getStats, getReportes, exportReportes, getStatsCategoria, getStatsTimeline, getHeatmapPoints, getZonasRiesgo, getAlertasPredictivas, getTrendingReportes } from '../services/api';
 import {
   ClipboardList, Search, CheckCircle2, Users,
   MapPin, TrendingUp, ArrowRight, Activity, Clock, Filter, X,
@@ -17,6 +17,11 @@ import { generarReportesPDF } from '../utils/reportesPdf';
 import BarChart from '../components/charts/BarChart';
 import LineChart from '../components/charts/LineChart';
 import TendenciasIACard from '../components/dashboard/TendenciasIACard.jsx';
+import {
+  ESTADO_REPORTE_TEXT_CLASS,
+  ESTADO_SEGUIMIENTO_LABEL,
+  getEstadoSeguimientoReporte,
+} from '../utils/reporteEstado';
 
 const ReportsMap = lazy(() => import('../components/ReportsMap'));
 
@@ -113,6 +118,12 @@ export default function Dashboard() {
   const [alertasError,   setAlertasError]   = useState(false);
   const [alertasNivel,   setAlertasNivel]   = useState('alto');
   const [alertasTipo,    setAlertasTipo]    = useState('');
+  const [mapFlyTo,       setMapFlyTo]       = useState(null);
+
+  // Trending reports tab dentro del activity feed
+  const [activityTab,     setActivityTab]     = useState('reciente'); // 'reciente' | 'tendencia'
+  const [trending,        setTrending]        = useState([]);
+  const [trendingLoading, setTrendingLoading] = useState(false);
 
   const fetchHealth = async () => {
     setLoading(true);
@@ -193,17 +204,27 @@ export default function Dashboard() {
     if (user?.rol !== 'admin' && user?.rol !== 'moderador') return;
     setAlertasLoading(true);
     setAlertasError(false);
-    const params = { limite: 10, nivel_min: alertasNivel };
+    const params = { limite: 20, nivel_min: alertasNivel, dias: prediccionDias };
     if (alertasTipo) params.tipo = alertasTipo;
     getAlertasPredictivas(params)
       .then(({ data }) => setAlertas(data?.data?.alertas ?? []))
       .catch(() => { setAlertasError(true); setAlertas([]); })
       .finally(() => setAlertasLoading(false));
-  }, [user?.rol, alertasNivel, alertasTipo]);
+  }, [user?.rol, alertasNivel, alertasTipo, prediccionDias]);
 
   useEffect(() => {
     fetchAlertas();
   }, [fetchAlertas]);
+
+  // Trending — carga solo cuando el usuario activa esa pestaña
+  useEffect(() => {
+    if (activityTab !== 'tendencia' || trending.length > 0) return;
+    setTrendingLoading(true);
+    getTrendingReportes({ limit: 8 })
+      .then(({ data }) => setTrending(data?.data?.reportes ?? []))
+      .catch(() => setTrending([]))
+      .finally(() => setTrendingLoading(false));
+  }, [activityTab, trending.length]);
 
   // FE-21: auto-refresh KPIs cada 30s (solo admin/moderador, evita carga innecesaria)
   useEffect(() => {
@@ -222,20 +243,19 @@ export default function Dashboard() {
     try {
       const params = { format: 'json' };
       if (mapFilters.categoria) params.tipo_contaminacion = mapFilters.categoria;
-      if (mapFilters.estado)    params.estado            = mapFilters.estado;
-      if (mapFilters.dateFrom)  params.desde             = mapFilters.dateFrom;
-      if (mapFilters.dateTo)    params.hasta             = mapFilters.dateTo + ' 23:59:59';
+      if (mapFilters.estado)    params.estado             = mapFilters.estado;
+      if (mapFilters.dateFrom)  params.desde              = mapFilters.dateFrom;
+      if (mapFilters.dateTo)    params.hasta              = mapFilters.dateTo + ' 23:59:59';
 
       const { data } = await exportReportes(params);
       const reportes = data?.data?.reportes ?? [];
 
       await generarReportesPDF({
         reportes,
-        stats: stats ?? {},
         filtros: mapFilters,
         usuario: [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.email || '',
       });
-      showToast('PDF generado correctamente.', 'success');
+      showToast(`PDF generado: ${reportes.length} reporte${reportes.length !== 1 ? 's' : ''}.`, 'success');
     } catch (err) {
       const msg = err?.response?.status === 403
         ? 'No tienes permiso para exportar.'
@@ -253,9 +273,10 @@ export default function Dashboard() {
   const rol = user?.rol;
   // Number() coercion guards against string/int mismatch between MySQL and localStorage
   const misReportes   = activity.filter(r => Number(r.id_usuario) === Number(user?.id_usuario));
-  const misPendientes = misReportes.filter(r => r.estado === 'pendiente' || r.estado === 'en_revision').length;
-  const misResueltos  = misReportes.filter(r => r.estado === 'resuelto').length;
+  const misPendientes = misReportes.filter(r => ['pendiente', 'en_proceso'].includes(getEstadoSeguimientoReporte(r))).length;
+  const misResueltos  = misReportes.filter(r => getEstadoSeguimientoReporte(r) === 'resuelto').length;
   const _misCriticos  = misReportes.filter(r => r.nivel_severidad === 'critico' || r.nivel_severidad === 'alto').length;
+  const pendientesGlobales = activity.filter(r => getEstadoSeguimientoReporte(r) === 'pendiente').length;
 
   // FE-21: % resolución calculado a partir de stats globales (sin NaN si total=0)
   const porcentajeResolucion = stats?.total_reportes > 0
@@ -267,7 +288,7 @@ export default function Dashboard() {
     let list = activity;
     if (mapFilters.soloMios) list = list.filter(r => Number(r.id_usuario) === Number(user?.id_usuario));
     if (mapFilters.categoria) list = list.filter(r => r.tipo_contaminacion === mapFilters.categoria);
-    if (mapFilters.estado) list = list.filter(r => r.estado === mapFilters.estado);
+    if (mapFilters.estado) list = list.filter(r => getEstadoSeguimientoReporte(r) === mapFilters.estado);
     if (mapFilters.dateFrom) list = list.filter(r => new Date(r.created_at) >= new Date(mapFilters.dateFrom));
     if (mapFilters.dateTo) list = list.filter(r => new Date(r.created_at) <= new Date(mapFilters.dateTo + 'T23:59:59'));
     return list;
@@ -276,7 +297,17 @@ export default function Dashboard() {
   const hasMapFilters = mapFilters.categoria || mapFilters.estado || mapFilters.soloMios || mapFilters.dateFrom || mapFilters.dateTo;
   const resetMapFilters = () => setMapFilters({ categoria: '', estado: '', soloMios: false, dateFrom: '', dateTo: '' });
 
-  const MAP_ESTADO_LABEL = { pendiente: 'Pendiente', en_revision: 'En revisión', en_proceso: 'En proceso', verificado: 'Verificado', resuelto: 'Resuelto', rechazado: 'Rechazado' };
+  // Aplica los mismos filtros de panel al heatmap (client-side)
+  const heatmapFiltered = useMemo(() => {
+    let list = heatmapPoints;
+    if (mapFilters.categoria) list = list.filter(r => r.tipo_contaminacion === mapFilters.categoria);
+    if (mapFilters.estado) list = list.filter(r => getEstadoSeguimientoReporte(r) === mapFilters.estado);
+    if (mapFilters.dateFrom) list = list.filter(r => new Date(r.created_at) >= new Date(mapFilters.dateFrom));
+    if (mapFilters.dateTo) list = list.filter(r => new Date(r.created_at) <= new Date(mapFilters.dateTo + 'T23:59:59'));
+    return list;
+  }, [heatmapPoints, mapFilters]);
+
+  const MAP_ESTADO_LABEL = { pendiente: 'Pendiente', en_proceso: 'En proceso', resuelto: 'Resuelto', rechazado: 'Rechazado' };
   const mapSelectCls = 'bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-green-500 transition-colors';
 
   // Donut chart data — siempre muestra la distribución comunitaria
@@ -306,8 +337,8 @@ export default function Dashboard() {
     { label: 'Total comunidad', Icon: Activity,      value: stats?.total_reportes,     accent: 'text-teal-400',   border: 'border-t-teal-500',   bg: 'bg-teal-500/15',   glow: '#14b8a6', tooltip: 'Total de reportes registrados por toda la comunidad' },
   ] : rol === 'moderador' ? [
     // Cola de trabajo del moderador
-    { label: 'En revisión',     Icon: Search,        value: stats?.en_revision,        accent: 'text-amber-400',   border: 'border-t-amber-500',   bg: 'bg-amber-500/15',   glow: '#f59e0b', tooltip: 'Pendientes de revisión en la plataforma' },
-    { label: 'Pendientes',      Icon: AlertCircle,   value: stats?.pendientes,         accent: 'text-rose-400',    border: 'border-t-rose-500',    bg: 'bg-rose-500/15',    glow: '#f43f5e', tooltip: 'Reportes en estado pendiente, sin asignar aún' },
+    { label: 'En proceso',      Icon: Search,        value: stats?.en_proceso,         accent: 'text-amber-400',   border: 'border-t-amber-500',   bg: 'bg-amber-500/15',   glow: '#f59e0b', tooltip: 'Reportes en atencion por entidades o moderacion' },
+    { label: 'Pendientes',      Icon: AlertCircle,   value: pendientesGlobales,        accent: 'text-rose-400',    border: 'border-t-rose-500',    bg: 'bg-rose-500/15',    glow: '#f43f5e', tooltip: 'Reportes en estado pendiente, sin asignar aún' },
     { label: 'Total reportes',  Icon: TrendingUp,    value: stats?.total_reportes,     accent: 'text-blue-400',    border: 'border-t-blue-500',    bg: 'bg-blue-500/15',    glow: '#3b82f6', tooltip: 'Volumen total de reportes' },
     { label: 'Resueltos',       Icon: CheckCircle2,  value: stats?.resueltos,          accent: 'text-green-400',   border: 'border-t-green-500',   bg: 'bg-green-500/15',   glow: '#22c55e', tooltip: 'Reportes gestionados exitosamente' },
     { label: '% Resolución',    Icon: Percent,       value: porcentajeResolucion,      suffix: '%', accent: 'text-teal-400',  border: 'border-t-teal-500',    bg: 'bg-teal-500/15',    glow: '#14b8a6', tooltip: 'Porcentaje de reportes que terminaron en estado resuelto' },
@@ -318,43 +349,61 @@ export default function Dashboard() {
     // Admin — visión completa del sistema
     { label: 'Total reportes',  Icon: TrendingUp,    value: stats?.total_reportes,     accent: 'text-blue-400',    border: 'border-t-blue-500',    bg: 'bg-blue-500/15',    glow: '#3b82f6', tooltip: 'Total de reportes en la plataforma' },
     { label: 'Resueltos',       Icon: CheckCircle2,  value: stats?.resueltos,          accent: 'text-green-400',   border: 'border-t-green-500',   bg: 'bg-green-500/15',   glow: '#22c55e', tooltip: 'Reportes cerrados exitosamente' },
-    { label: 'Pendientes',      Icon: AlertCircle,   value: stats?.pendientes,         accent: 'text-rose-400',    border: 'border-t-rose-500',    bg: 'bg-rose-500/15',    glow: '#f43f5e', tooltip: 'Reportes en estado pendiente, sin moderar' },
+    { label: 'Pendientes',      Icon: AlertCircle,   value: pendientesGlobales,        accent: 'text-rose-400',    border: 'border-t-rose-500',    bg: 'bg-rose-500/15',    glow: '#f43f5e', tooltip: 'Reportes en estado pendiente, sin moderar' },
     { label: '% Resolución',    Icon: Percent,       value: porcentajeResolucion,      suffix: '%', accent: 'text-teal-400',  border: 'border-t-teal-500',    bg: 'bg-teal-500/15',    glow: '#14b8a6', tooltip: 'Porcentaje del total que terminó en estado resuelto' },
-    { label: 'En revisión',     Icon: Search,        value: stats?.en_revision,        accent: 'text-amber-400',   border: 'border-t-amber-500',   bg: 'bg-amber-500/15',   glow: '#f59e0b', tooltip: 'Esperando revisión' },
+    { label: 'En proceso',      Icon: Search,        value: stats?.en_proceso,         accent: 'text-amber-400',   border: 'border-t-amber-500',   bg: 'bg-amber-500/15',   glow: '#f59e0b', tooltip: 'Reportes en atencion' },
     { label: 'Municipios',      Icon: MapPin,        value: stats?.municipios_activos, accent: 'text-violet-400',  border: 'border-t-violet-500',  bg: 'bg-violet-500/15',  glow: '#8b5cf6', tooltip: 'Municipios con reportes activos' },
     { label: 'Este mes',        Icon: ClipboardList, value: stats?.reportes_este_mes,  accent: 'text-emerald-400', border: 'border-t-emerald-500', bg: 'bg-emerald-500/15', glow: '#10b981', tooltip: 'Nuevos reportes este mes' },
     { label: 'Usuarios',        Icon: Users,         value: stats?.total_usuarios,     accent: 'text-orange-400',  border: 'border-t-orange-500',  bg: 'bg-orange-500/15',  glow: '#f97316', tooltip: 'Total de usuarios registrados' },
   ];
+
+  if (rol === 'entidad') {
+    return <Navigate to="/entidad" replace />;
+  }
+
+  // Helper para renderizar un header de sección (estilo referente con ícono + línea)
+  const renderSection = (label, Icon, bg, iconCls) => (
+    <div className="flex items-center gap-2.5 mb-3">
+      <div className={`w-6 h-6 rounded-md ${bg} flex items-center justify-center shrink-0`}>
+        <Icon className={`w-3.5 h-3.5 ${iconCls}`} />
+      </div>
+      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-none">{label}</span>
+      <div className="flex-1 h-px bg-gray-800/70" />
+    </div>
+  );
 
   // Helper para renderizar una KPI card individual
   const renderCard = (s, i) => (
     <motion.div
       key={s.label}
       title={s.tooltip}
-      className={`relative overflow-hidden bg-gray-900 border border-gray-800 ${s.border} border-t-[3px] rounded-2xl p-4 flex flex-col gap-3 cursor-default`}
-      initial={{ opacity: 0, y: 20 }}
+      className={`relative overflow-hidden bg-gray-900/80 border border-gray-800/80 ${s.border} border-t-2 rounded-xl p-4 flex items-center gap-4 cursor-default`}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.05 * i, duration: 0.4 }}
+      transition={{ delay: 0.04 * i, duration: 0.35 }}
     >
+      {/* Glow de fondo sutil */}
       <div
-        className="absolute -top-6 -right-6 w-16 h-16 rounded-full blur-2xl opacity-20 pointer-events-none"
+        className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full blur-2xl opacity-10 pointer-events-none"
         style={{ background: s.glow }}
       />
-      <div className={`w-9 h-9 ${s.bg} rounded-xl flex items-center justify-center shrink-0`}>
-        <s.Icon className={`w-[18px] h-[18px] ${s.accent}`} />
+      {/* Icono */}
+      <div className={`w-10 h-10 ${s.bg} rounded-lg flex items-center justify-center shrink-0`}>
+        <s.Icon className={`w-5 h-5 ${s.accent}`} />
       </div>
-      <div>
+      {/* Contenido */}
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider leading-none mb-1.5 truncate">{s.label}</p>
         <div className="flex items-baseline gap-0.5">
-          <CountUp target={s.value} className={`text-2xl sm:text-3xl font-extrabold ${s.accent}`} />
-          {s.suffix && <span className={`text-lg sm:text-xl font-extrabold ${s.accent}`}>{s.suffix}</span>}
+          <CountUp target={s.value} className={`text-2xl font-extrabold leading-none ${s.accent}`} />
+          {s.suffix && <span className={`text-base font-extrabold leading-none ${s.accent}`}>{s.suffix}</span>}
         </div>
-        <p className="text-[11px] text-gray-500 mt-0.5 leading-tight">{s.label}</p>
       </div>
     </motion.div>
   );
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <motion.div
@@ -454,25 +503,41 @@ export default function Dashboard() {
       )}
 
       {/* ── KPI Cards ─────────────────────────────────────────────────── */}
-      <section className="mb-4">
+      <section className="mb-6">
         {rol === 'ciudadano' ? (
           <div className="space-y-5">
             <div>
-              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-2 ml-1">Tus reportes</p>
+              {renderSection('Mis reportes', ClipboardList, 'bg-emerald-500/15', 'text-emerald-400')}
               <div className="grid grid-cols-3 gap-3">
                 {statsCards.slice(0, 3).map((s, i) => renderCard(s, i))}
               </div>
             </div>
             <div>
-              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-2 ml-1">La comunidad</p>
+              {renderSection('La comunidad', Users, 'bg-blue-500/15', 'text-blue-400')}
               <div className="grid grid-cols-3 gap-3">
                 {statsCards.slice(3).map((s, i) => renderCard(s, i + 3))}
               </div>
             </div>
           </div>
         ) : (
-          <div className={`grid grid-cols-2 sm:grid-cols-3 ${statsCards.length > 6 ? 'lg:grid-cols-4' : 'lg:grid-cols-6'} gap-3`}>
-            {statsCards.map((s, i) => renderCard(s, i))}
+          <div className="space-y-5">
+            <div>
+              {renderSection(
+                rol === 'admin' ? 'Vista general' : 'Cola de trabajo',
+                rol === 'admin' ? TrendingUp : Search,
+                rol === 'admin' ? 'bg-blue-500/15' : 'bg-amber-500/15',
+                rol === 'admin' ? 'text-blue-400' : 'text-amber-400'
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {statsCards.slice(0, 4).map((s, i) => renderCard(s, i))}
+              </div>
+            </div>
+            <div>
+              {renderSection('Actividad y comunidad', Activity, 'bg-violet-500/15', 'text-violet-400')}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {statsCards.slice(4).map((s, i) => renderCard(s, i + 4))}
+              </div>
+            </div>
           </div>
         )}
       </section>
@@ -539,21 +604,85 @@ export default function Dashboard() {
               </div>
             </div>
           )}
+
+          {/* ── Insights rápidos ── */}
+          {donutData.length > 0 && (
+            <div className="mt-auto pt-4 border-t border-gray-800 grid grid-cols-3 gap-3">
+              {/* Top categoría */}
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] uppercase tracking-wider text-gray-600">Top categoría</span>
+                <span
+                  className="text-xs font-semibold truncate"
+                  style={{ color: donutData[0]?.color }}
+                  title={donutData[0]?.nombre}
+                >
+                  {donutData[0]?.nombre ?? '—'}
+                </span>
+                <span className="text-[11px] text-gray-500 tabular-nums">
+                  {donutTotal > 0 ? Math.round((donutData[0]?.count / donutTotal) * 100) : 0}% del total
+                </span>
+              </div>
+              {/* Tasa de resolución */}
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] uppercase tracking-wider text-gray-600">Resolución</span>
+                <span className="text-xs font-semibold text-green-400 tabular-nums">{porcentajeResolucion}%</span>
+                <span className="text-[11px] text-gray-500 tabular-nums">
+                  {stats?.resueltos ?? 0} de {stats?.total_reportes ?? donutTotal}
+                </span>
+              </div>
+              {/* Pendientes */}
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] uppercase tracking-wider text-gray-600">Pendientes</span>
+                <span className="text-xs font-semibold text-amber-400 tabular-nums">
+                  {stats?.pendientes ?? pendientesGlobales}
+                </span>
+                <span className="text-[11px] text-gray-500">requieren atención</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Activity feed */}
         <div className="card flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-semibold text-white">Actividad reciente</h2>
+              <h2 className="font-semibold text-white">
+                {activityTab === 'reciente' ? 'Actividad reciente' : 'En tendencia'}
+              </h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                {rol === 'ciudadano' ? 'Tus últimos reportes' : 'Últimos reportes enviados'}
+                {activityTab === 'reciente'
+                  ? (rol === 'ciudadano' ? 'Tus últimos reportes' : 'Últimos reportes enviados')
+                  : 'Los más votados y vistos por la comunidad'}
               </p>
             </div>
-            <Link to="/reports" className="text-xs text-green-400 hover:text-green-300 flex items-center gap-1 transition-colors shrink-0">
-              Ver todos <ArrowRight size={11} />
-            </Link>
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Toggle tabs */}
+              <div className="flex bg-gray-900 border border-gray-800 rounded-lg p-0.5 text-xs">
+                <button
+                  onClick={() => setActivityTab('reciente')}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${
+                    activityTab === 'reciente' ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  Reciente
+                </button>
+                <button
+                  onClick={() => setActivityTab('tendencia')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-colors ${
+                    activityTab === 'tendencia' ? 'bg-amber-500 text-white' : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  <TrendingUp size={10} /> Tendencia
+                </button>
+              </div>
+              <Link to="/reports" className="text-xs text-green-400 hover:text-green-300 flex items-center gap-1 transition-colors">
+                Ver todos <ArrowRight size={11} />
+              </Link>
+            </div>
           </div>
+
+          {/* Reciente tab */}
+          {activityTab === 'reciente' && (
           <div className="flex flex-col gap-2 overflow-y-auto scrollbar-dark" style={{ maxHeight: '340px' }}>
             {actLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
@@ -571,15 +700,12 @@ export default function Dashboard() {
               (rol === 'ciudadano' ? misReportes : activity).slice(0, 8).map((r, i) => {
                 const cfg   = helpers.obtenerConfig(r.tipo_contaminacion);
                 const color = cfg?.color ?? '#6b7280';
-                const estText    = { pendiente:'text-gray-400', en_revision:'text-blue-400', verificado:'text-purple-400', en_proceso:'text-yellow-400', resuelto:'text-green-400', rechazado:'text-red-400' };
-                const estLabel   = { pendiente:'Pendiente', en_revision:'En revisión', verificado:'Verificado', en_proceso:'En proceso', resuelto:'Resuelto', rechazado:'Rechazado' };
+                const estadoSeguimiento = getEstadoSeguimientoReporte(r);
                 const estTooltip = {
-                  pendiente:   'En espera de revisión por un moderador',
-                  en_revision: 'Un moderador está analizando este reporte',
-                  verificado:  'El problema fue confirmado como válido por un moderador',
-                  en_proceso:  'Las autoridades están actuando sobre este reporte',
-                  resuelto:    'El problema ha sido atendido y el caso está cerrado',
-                  rechazado:   'El reporte no cumplió los criterios de validación',
+                  pendiente: 'En espera de atencion',
+                  en_proceso: 'Una entidad o moderador ya esta actuando sobre este reporte',
+                  resuelto: 'El problema ha sido atendido y el caso esta cerrado',
+                  rechazado: 'El reporte no cumplio los criterios de validacion',
                 };
                 const sevBorder = { bajo:'border-l-green-400', medio:'border-l-orange-400', alto:'border-l-red-400', critico:'border-l-rose-400' };
                 const sevText   = { bajo:'text-green-400', medio:'text-orange-400', alto:'text-red-400', critico:'text-rose-400' };
@@ -607,10 +733,10 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between mt-1 pl-3.5">
                       <span className="text-[10px] text-gray-600 truncate">{lugar}</span>
                       <span
-                        className={`text-[10px] font-medium ml-2 shrink-0 cursor-help ${estText[r.estado] ?? 'text-gray-400'}`}
-                        title={estTooltip[r.estado]}
+                        className={`text-[10px] font-medium ml-2 shrink-0 cursor-help ${ESTADO_REPORTE_TEXT_CLASS[estadoSeguimiento] ?? 'text-gray-400'}`}
+                        title={estTooltip[estadoSeguimiento]}
                       >
-                        {estLabel[r.estado] ?? r.estado}
+                        {ESTADO_SEGUIMIENTO_LABEL[estadoSeguimiento] ?? estadoSeguimiento}
                       </span>
                     </div>
                   </motion.button>
@@ -618,6 +744,65 @@ export default function Dashboard() {
               })
             )}
           </div>
+          )}
+
+          {/* Tendencia tab */}
+          {activityTab === 'tendencia' && (
+          <div className="flex flex-col gap-2 overflow-y-auto scrollbar-dark" style={{ maxHeight: '340px' }}>
+            {trendingLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="p-3 rounded-lg border-l-4 border-l-gray-700 bg-gray-800/30 animate-pulse">
+                  <div className="h-3 bg-gray-700 rounded w-3/4 mb-2" />
+                  <div className="h-2.5 bg-gray-700 rounded w-1/2" />
+                </div>
+              ))
+            ) : trending.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-2 py-10 text-center">
+                <TrendingUp className="w-9 h-9 text-gray-700" />
+                <p className="text-sm text-gray-500">Aún no hay reportes con votos o vistas suficientes.</p>
+              </div>
+            ) : (
+              trending.map((r, i) => {
+                const cfg   = helpers.obtenerConfig(r.tipo_contaminacion);
+                const color = cfg?.color ?? '#6b7280';
+                const sevBorder = { bajo:'border-l-green-400', medio:'border-l-orange-400', alto:'border-l-red-400', critico:'border-l-rose-400' };
+                const sevText   = { bajo:'text-green-400', medio:'text-orange-400', alto:'text-red-400', critico:'text-rose-400' };
+                const sevLabel  = { bajo:'Baja', medio:'Media', alto:'Alta', critico:'Crítico' };
+                const lugar = [r.municipio, r.departamento].filter(Boolean).join(', ') || r.direccion || '';
+                return (
+                  <motion.button
+                    key={r.id_reporte}
+                    onClick={() => navigate(`/reports/${r.id_reporte}`)}
+                    className={`w-full text-left p-3 rounded-lg border-l-4 ${sevBorder[r.nivel_severidad] ?? 'border-l-gray-600'} bg-gray-800/30 hover:bg-gray-800/60 transition-colors`}
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.05 * i, duration: 0.3 }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                        <span className="text-xs font-semibold text-gray-200 truncate">{cfg?.nombre ?? r.tipo_contaminacion}</span>
+                      </div>
+                      <span className={`text-[10px] font-medium shrink-0 ${sevText[r.nivel_severidad] ?? 'text-gray-500'}`}>
+                        {sevLabel[r.nivel_severidad]}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-0.5 pl-3.5 truncate">{r.titulo}</p>
+                    <div className="flex items-center justify-between mt-1 pl-3.5">
+                      <span className="text-[10px] text-gray-600 truncate">{lugar}</span>
+                      <span className="flex items-center gap-2 text-[10px] shrink-0 ml-2">
+                        <span className="text-amber-400 font-semibold tabular-nums flex items-center gap-0.5">
+                          <TrendingUp size={9} /> {Number(r.votos_relevancia) || 0}
+                        </span>
+                        <span className="text-gray-600 tabular-nums">{Number(r.vistas) || 0} vistas</span>
+                      </span>
+                    </div>
+                  </motion.button>
+                );
+              })
+            )}
+          </div>
+          )}
         </div>
       </section>
 
@@ -650,11 +835,11 @@ export default function Dashboard() {
             ) : (
               <BarChart
                 data={catData.map(d => {
-                  const cfg = helpers.obtenerConfig(d.categoria);
+                  const cfg = helpers.obtenerConfig(d.codigo ?? d.categoria);
                   return {
-                    label: cfg?.nombre ?? d.categoria,
-                    value: Number(d.total) || 0,
-                    color: cfg?.color ?? '#22c55e',
+                    label: d.nombre ?? cfg?.nombre ?? d.codigo ?? d.categoria,
+                    value: Number(d.total_reportes ?? d.total) || 0,
+                    color: d.color_hex ?? cfg?.color ?? '#22c55e',
                   };
                 })}
               />
@@ -713,8 +898,163 @@ export default function Dashboard() {
 
       {/* FE-27 · Tendencias y patrones detectados por la IA (admin/moderador) */}
       {isAdmin && (
-        <section>
+        <section className="mb-10">
           <TendenciasIACard />
+        </section>
+      )}
+
+      {/* FE-26: Alertas predictivas (admin/moderador) — encima del mapa para que "Ver en el mapa" baje al mapa */}
+      {isAdmin && (
+        <section className="mb-10 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Brain size={16} className="text-violet-400" />
+              <h2 className="font-semibold text-white">Alertas predictivas</h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <label className="flex items-center gap-1.5 text-gray-400">
+                Nivel mín.
+                <select
+                  value={alertasNivel}
+                  onChange={(e) => setAlertasNivel(e.target.value)}
+                  className="bg-gray-900 border border-gray-800 rounded-md px-2 py-1 text-gray-200"
+                >
+                  <option value="bajo">Bajo</option>
+                  <option value="medio">Medio</option>
+                  <option value="alto">Alto</option>
+                  <option value="critico">Crítico</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-1.5 text-gray-400">
+                Tipo
+                <select
+                  value={alertasTipo}
+                  onChange={(e) => setAlertasTipo(e.target.value)}
+                  className="bg-gray-900 border border-gray-800 rounded-md px-2 py-1 text-gray-200"
+                >
+                  <option value="">Todos</option>
+                  {Object.keys(CONFIGURACION_CATEGORIAS).map((k) => (
+                    <option key={k} value={k}>{CONFIGURACION_CATEGORIAS[k]?.nombre ?? k}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={fetchAlertas}
+                disabled={alertasLoading}
+                className="flex items-center gap-1 px-2 py-1 rounded-md bg-gray-900 border border-gray-800 text-gray-300 hover:text-white hover:border-gray-700 disabled:opacity-50"
+                aria-label="Actualizar alertas predictivas"
+              >
+                <RefreshCw size={12} className={alertasLoading ? 'animate-spin' : ''} />
+                Actualizar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMapMode('prediccion');
+                  requestAnimationFrame(() => {
+                    const el = document.getElementById('mapa-reportes');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  });
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-violet-600/20 border border-violet-500/30 text-violet-300 hover:bg-violet-600/30 transition-colors text-xs"
+              >
+                <Brain size={12} /> Ver mapa predictivo
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-4">
+            {alertasLoading ? (
+              <div className="space-y-2">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-14 rounded-lg bg-gray-800/40 animate-pulse" />
+                ))}
+              </div>
+            ) : alertasError ? (
+              <div className="text-center py-6">
+                <p className="text-sm text-red-400 mb-2">No se pudieron cargar las alertas predictivas.</p>
+                <button
+                  type="button"
+                  onClick={fetchAlertas}
+                  className="text-xs text-violet-400 hover:text-violet-300 underline"
+                >
+                  Reintentar
+                </button>
+              </div>
+            ) : alertas.length === 0 ? (
+              <div className="text-center py-6 text-sm text-gray-500">
+                Sin alertas activas con los criterios actuales. Esto es buena señal: no se detectan zonas con tendencia al alza significativa.
+              </div>
+            ) : (
+              <ul className="divide-y divide-gray-800/60">
+                {alertas.map((a) => {
+                  const color = a.nivel === 'critico' ? '#dc2626'
+                    : a.nivel === 'alto' ? '#fb923c'
+                    : a.nivel === 'medio' ? '#facc15' : '#22c55e';
+                  const tipoNombre = CONFIGURACION_CATEGORIAS?.[a.tipo_dominante]?.nombre ?? a.tipo_dominante ?? '—';
+                  const lugar = [a.municipio, a.departamento].filter(Boolean).join(', ') || '—';
+                  const TendIcon = a.tendencia === 'subiendo' ? TrendingUp
+                    : a.tendencia === 'bajando' ? TrendingDown : Minus;
+                  const tendColor = a.tendencia === 'subiendo' ? 'text-red-400'
+                    : a.tendencia === 'bajando' ? 'text-green-400' : 'text-gray-400';
+                  const tendLabel = a.tendencia === 'subiendo' ? 'tendencia al alza'
+                    : a.tendencia === 'bajando' ? 'tendencia a la baja' : 'tendencia estable';
+                  const ultimoStr = a.ultimo_reporte
+                    ? new Date(a.ultimo_reporte).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
+                    : null;
+                  return (
+                    <li key={a.id} className="flex flex-wrap items-center gap-3 py-3">
+                      <span
+                        className="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider shrink-0"
+                        style={{ background: `${color}22`, color, border: `1px solid ${color}55` }}
+                      >
+                        {a.nivel}
+                      </span>
+                      <div className="flex-1 min-w-[180px]">
+                        <p className="text-sm text-white font-medium">
+                          {tipoNombre}{a.subcategoria_dominante ? ` · ${a.subcategoria_dominante}` : ''}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          📍 {lugar}
+                          {ultimoStr && <span className="ml-2 text-gray-600">· último: {ultimoStr}</span>}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-gray-400">
+                        <span className="tabular-nums">
+                          <strong className="text-gray-200">{a.n_reportes}</strong>
+                          {a.n_reportes_previo != null && (
+                            <span className="text-gray-600"> / {a.n_reportes_previo} prev.</span>
+                          )}
+                        </span>
+                        <span className={`flex items-center gap-1 ${tendColor}`} aria-label={tendLabel} title={tendLabel}>
+                          <TendIcon size={14} aria-hidden="true" />
+                        </span>
+                        <span className="tabular-nums text-gray-500">score {a.score}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMapMode('prediccion');
+                          setMapFlyTo({ lat: a.centro.lat, lng: a.centro.lng, zoom: 13 });
+                          requestAnimationFrame(() => {
+                            const el = document.getElementById('mapa-reportes');
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          });
+                        }}
+                        className="text-xs text-violet-400 hover:text-violet-300 inline-flex items-center gap-1 shrink-0"
+                      >
+                        Ver en el mapa <ArrowRight size={12} />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <p className="mt-3 text-[10px] text-gray-500 italic">
+              Estas alertas comparan los últimos {prediccionDias} días con el período anterior del mismo tamaño. Son una guía para priorizar y no reemplazan análisis técnicos ni alertas oficiales.
+            </p>
+          </div>
         </section>
       )}
 
@@ -725,7 +1065,7 @@ export default function Dashboard() {
             <h2 className="font-semibold text-white">Mapa de reportes</h2>
             <p className="text-xs text-gray-500 mt-0.5">
               {mapMode === 'heatmap'
-                ? `${heatmapPoints.length} punto${heatmapPoints.length !== 1 ? 's' : ''} en el mapa de calor`
+                ? `${heatmapFiltered.length} punto${heatmapFiltered.length !== 1 ? 's' : ''} en el mapa de calor`
                 : mapMode === 'prediccion'
                 ? `${zonasRiesgo.length} zona${zonasRiesgo.length !== 1 ? 's' : ''} de riesgo identificada${zonasRiesgo.length !== 1 ? 's' : ''}`
                 : `${mapReports.length} reporte${mapReports.length !== 1 ? 's' : ''} visible${mapReports.length !== 1 ? 's' : ''}`}
@@ -833,8 +1173,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── FE-17: Panel de filtros ── */}
-        <motion.div
+        {/* ── FE-17: Panel de filtros — oculto en modo predictivo (tiene sus propios controles) ── */}
+        {mapMode !== 'prediccion' && (<motion.div
           className="bg-gray-900/60 border border-gray-800 rounded-2xl p-4 mb-4 space-y-3"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -901,17 +1241,19 @@ export default function Dashboard() {
 
             {/* FE-21: Exportar reportes filtrados a PDF (solo admin/moderador) */}
             {isAdmin && (
-              <button
+              <motion.button
                 onClick={handleExportPdf}
                 disabled={exporting}
                 title={`Exportar ${mapReports.length} reporte${mapReports.length !== 1 ? 's' : ''} filtrado${mapReports.length !== 1 ? 's' : ''} a PDF`}
+                whileTap={exporting ? {} : { scale: 0.92 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border border-green-700/50 bg-green-950/30 hover:bg-green-900/40 hover:border-green-600 text-green-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
               >
                 {exporting
                   ? <Loader2 size={13} className="animate-spin" />
                   : <FileDown size={13} />}
                 {exporting ? 'Generando…' : 'Exportar PDF'}
-              </button>
+              </motion.button>
             )}
           </div>
 
@@ -976,16 +1318,17 @@ export default function Dashboard() {
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.div>
+        </motion.div>)}
 
-        <div id="mapa-reportes" className="rounded-xl overflow-hidden border border-gray-800 h-72 sm:h-[420px] lg:h-[560px]">
+        <div id="mapa-reportes" className="rounded-xl overflow-hidden border border-gray-800 h-[360px] sm:h-[540px] lg:h-[700px]">
           <Suspense fallback={
             <div className="h-full flex items-center justify-center bg-gray-900 text-gray-500 text-sm">Cargando mapa…</div>
           }>
             <ReportsMap
-              reports={mapMode === 'heatmap' ? heatmapPoints : mapReports}
+              reports={mapMode === 'heatmap' ? heatmapFiltered : mapReports}
               mode={mapMode}
               zonas={zonasRiesgo}
+              flyTo={mapFlyTo}
             />
           </Suspense>
         </div>
@@ -1005,143 +1348,6 @@ export default function Dashboard() {
           </p>
         )}
       </section>
-
-      {/* FE-26: Alertas predictivas (admin/moderador) */}
-      {isAdmin && (
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Brain size={16} className="text-violet-400" />
-              <h2 className="font-semibold text-white">Alertas predictivas</h2>
-              <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20">
-                Beta
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <label className="flex items-center gap-1.5 text-gray-400">
-                Nivel mín.
-                <select
-                  value={alertasNivel}
-                  onChange={(e) => setAlertasNivel(e.target.value)}
-                  className="bg-gray-900 border border-gray-800 rounded-md px-2 py-1 text-gray-200"
-                >
-                  <option value="bajo">Bajo</option>
-                  <option value="medio">Medio</option>
-                  <option value="alto">Alto</option>
-                  <option value="critico">Crítico</option>
-                </select>
-              </label>
-              <label className="flex items-center gap-1.5 text-gray-400">
-                Tipo
-                <select
-                  value={alertasTipo}
-                  onChange={(e) => setAlertasTipo(e.target.value)}
-                  className="bg-gray-900 border border-gray-800 rounded-md px-2 py-1 text-gray-200"
-                >
-                  <option value="">Todos</option>
-                  {Object.keys(CONFIGURACION_CATEGORIAS).map((k) => (
-                    <option key={k} value={k}>{CONFIGURACION_CATEGORIAS[k]?.nombre ?? k}</option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                onClick={fetchAlertas}
-                disabled={alertasLoading}
-                className="flex items-center gap-1 px-2 py-1 rounded-md bg-gray-900 border border-gray-800 text-gray-300 hover:text-white hover:border-gray-700 disabled:opacity-50"
-                aria-label="Actualizar alertas predictivas"
-              >
-                <RefreshCw size={12} className={alertasLoading ? 'animate-spin' : ''} />
-                Actualizar
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-4">
-            {alertasLoading ? (
-              <div className="space-y-2">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="h-14 rounded-lg bg-gray-800/40 animate-pulse" />
-                ))}
-              </div>
-            ) : alertasError ? (
-              <div className="text-center py-6">
-                <p className="text-sm text-red-400 mb-2">No se pudieron cargar las alertas predictivas.</p>
-                <button
-                  type="button"
-                  onClick={fetchAlertas}
-                  className="text-xs text-violet-400 hover:text-violet-300 underline"
-                >
-                  Reintentar
-                </button>
-              </div>
-            ) : alertas.length === 0 ? (
-              <div className="text-center py-6 text-sm text-gray-500">
-                Sin alertas activas con los criterios actuales. Esto es buena señal: no se detectan zonas con tendencia al alza significativa.
-              </div>
-            ) : (
-              <ul className="divide-y divide-gray-800/60">
-                {alertas.map((a) => {
-                  const color = a.nivel === 'critico' ? '#dc2626'
-                    : a.nivel === 'alto' ? '#fb923c'
-                    : a.nivel === 'medio' ? '#facc15' : '#22c55e';
-                  const tipoNombre = CONFIGURACION_CATEGORIAS?.[a.tipo]?.nombre ?? a.tipo ?? '—';
-                  const lugar = [a.municipio, a.departamento].filter(Boolean).join(', ') || '—';
-                  const TendIcon = a.tendencia === 'subiendo' ? TrendingUp
-                    : a.tendencia === 'bajando' ? TrendingDown : Minus;
-                  const tendColor = a.tendencia === 'subiendo' ? 'text-red-400'
-                    : a.tendencia === 'bajando' ? 'text-green-400' : 'text-gray-400';
-                  const tendLabel = a.tendencia === 'subiendo' ? 'tendencia al alza'
-                    : a.tendencia === 'bajando' ? 'tendencia a la baja' : 'tendencia estable';
-                  return (
-                    <li key={a.id} className="flex flex-wrap items-center gap-3 py-3">
-                      <span
-                        className="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider"
-                        style={{ background: `${color}22`, color, border: `1px solid ${color}55` }}
-                      >
-                        {a.nivel}
-                      </span>
-                      <div className="flex-1 min-w-[180px]">
-                        <p className="text-sm text-white font-medium">
-                          {tipoNombre}{a.subcategoria ? ` · ${a.subcategoria}` : ''}
-                        </p>
-                        <p className="text-xs text-gray-500">📍 {lugar}</p>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-400">
-                        <span className="tabular-nums">
-                          <strong className="text-gray-200">{a.n_reportes_30d}</strong>
-                          <span className="text-gray-600"> / {a.n_reportes_30d_previos} prev.</span>
-                        </span>
-                        <span className={`flex items-center gap-1 ${tendColor}`} aria-label={tendLabel}>
-                          <TendIcon size={14} aria-hidden="true" />
-                        </span>
-                        <span className="tabular-nums text-gray-500">score {a.score}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMapMode('prediccion');
-                          // scroll suave al mapa
-                          requestAnimationFrame(() => {
-                            const el = document.getElementById('mapa-reportes');
-                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                          });
-                        }}
-                        className="text-xs text-violet-400 hover:text-violet-300 inline-flex items-center gap-1"
-                      >
-                        Ver en el mapa <ArrowRight size={12} />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            <p className="mt-3 text-[10px] text-gray-500 italic">
-              Estas alertas comparan los últimos 30 días con los 30 anteriores. Son una guía para priorizar y no reemplazan análisis técnicos ni alertas oficiales.
-            </p>
-          </div>
-        </section>
-      )}
     </div>
   );
 }
