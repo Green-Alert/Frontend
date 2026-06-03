@@ -8,6 +8,11 @@ import { motion } from 'motion/react';
 import { getTrendingReportes } from '../services/api';
 import { helpers } from '../constants/categorias';
 import LikeButton from '../components/LikeButton';
+import {
+  ESTADO_REPORTE_BADGE_CLASS,
+  ESTADO_SEGUIMIENTO_LABEL,
+  getEstadoSeguimientoReporte,
+} from '../utils/reporteEstado';
 
 const typeIcons = {
   agua: Droplets, aire: Wind, suelo: Leaf,
@@ -16,19 +21,6 @@ const typeIcons = {
   avalanchas_fluviotorrenciales: Waves,
   otro: Leaf,
 };
-const statusClass = {
-  pendiente:   'bg-gray-500/15 text-gray-400 border border-gray-500/30',
-  en_revision: 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30',
-  verificado:  'bg-blue-500/15 text-blue-400 border border-blue-500/30',
-  en_proceso:  'bg-orange-500/15 text-orange-400 border border-orange-500/30',
-  resuelto:    'bg-green-500/15 text-green-400 border border-green-500/30',
-  rechazado:   'bg-red-500/15 text-red-400 border border-red-500/30',
-};
-const statusLabel = {
-  pendiente: 'Pendiente', en_revision: 'En revisión', verificado: 'Verificado',
-  en_proceso: 'En proceso', resuelto: 'Resuelto', rechazado: 'Rechazado',
-};
-
 const timeAgo = (iso) => {
   if (!iso) return '';
   const diff = Date.now() - new Date(iso).getTime();
@@ -117,6 +109,7 @@ export default function Trending() {
             const color  = cfg?.color ?? '#6B7280';
             const Icon   = typeIcons[r.tipo_contaminacion] ?? Leaf;
             const lugar  = [r.municipio, r.departamento].filter(Boolean).join(', ') || r.direccion || '—';
+            const estadoSeguimiento = getEstadoSeguimientoReporte(r);
             return (
               <motion.div
                 key={r.id_reporte}
@@ -172,8 +165,8 @@ export default function Trending() {
                       <Clock size={12} />
                       {timeAgo(r.created_at)}
                     </span>
-                    <span className={`badge ${statusClass[r.estado]} text-[10px]`}>
-                      {statusLabel[r.estado] ?? r.estado}
+                    <span className={`badge ${ESTADO_REPORTE_BADGE_CLASS[estadoSeguimiento]} text-[10px]`}>
+                      {ESTADO_SEGUIMIENTO_LABEL[estadoSeguimiento]}
                     </span>
                   </div>
                   <LikeButton

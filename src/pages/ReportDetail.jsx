@@ -13,6 +13,14 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import LikeButton from '../components/LikeButton';
 import MediaLightbox from '../components/MediaLightbox';
+import {
+  canManageCitizenReport,
+  ESTADO_REPORTE_BADGE_CLASS,
+  ESTADO_SEGUIMIENTO_LABEL,
+  getEstadoSeguimientoReporte,
+  normalizeEstado,
+} from '../utils/reporteEstado';
+import { getValidIaAnalysis } from '../utils/reporteIA';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -102,18 +110,6 @@ function ReportDetailMap({ lat, lon }) {
     </div>
   );
 }
-const statusClass = {
-  pendiente:   'bg-gray-500/15 text-gray-400 border border-gray-500/30',
-  en_revision: 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30',
-  verificado:  'bg-blue-500/15 text-blue-400 border border-blue-500/30',
-  en_proceso:  'bg-orange-500/15 text-orange-400 border border-orange-500/30',
-  resuelto:    'bg-green-500/15 text-green-400 border border-green-500/30',
-  rechazado:   'bg-red-500/15 text-red-400 border border-red-500/30',
-};
-const statusLabel = {
-  pendiente: 'Pendiente', en_revision: 'En revisión', verificado: 'Verificado',
-  en_proceso: 'En proceso', resuelto: 'Resuelto', rechazado: 'Rechazado',
-};
 const severityClass = {
   bajo:    'bg-green-500/15 text-green-400 border border-green-500/30',
   medio:   'bg-orange-500/15 text-orange-400 border border-orange-500/30',
@@ -269,10 +265,12 @@ export default function ReportDetail() {
   const hasMedia = imageEvidencias.length > 0 || videoEvidencias.length > 0;
   // Lightbox: solo navega entre imágenes (los videos tienen su propio reproductor inline).
   const mediaItems = imageEvidencias;
+  const estadoSeguimiento = getEstadoSeguimientoReporte(report);
+  const iaAnalysis = getValidIaAnalysis(report);
 
-  // Permisos: solo el dueño puede editar/eliminar mientras esté pendiente o en revisión
+  // Permisos: solo el dueño puede editar/eliminar mientras esté pendiente.
   const isOwner    = user && report.id_usuario === user.id_usuario;
-  const canManage  = isOwner && (report.estado === 'pendiente' || report.estado === 'en_revision');
+  const canManage  = isOwner && canManageCitizenReport(report);
 
   const startEdit = () => {
     setEditForm({
@@ -415,8 +413,8 @@ export default function ReportDetail() {
                 <span className={`badge ${severityClass[report.nivel_severidad]}`}>
                   {severityLabel[report.nivel_severidad] ?? report.nivel_severidad}
                 </span>
-                <span className={`badge ${statusClass[report.estado]}`}>
-                  {statusLabel[report.estado] ?? report.estado}
+                <span className={`badge ${ESTADO_REPORTE_BADGE_CLASS[estadoSeguimiento] ?? ESTADO_REPORTE_BADGE_CLASS.pendiente}`}>
+                  {ESTADO_SEGUIMIENTO_LABEL[estadoSeguimiento] ?? estadoSeguimiento}
                 </span>
               </div>
               {/* Vistas (izq) y like (der) debajo de los badges */}
@@ -448,7 +446,7 @@ export default function ReportDetail() {
           {canManage && !editMode && (
             <div className="flex items-center gap-2 -mt-2">
               <span className="text-[11px] text-gray-500 mr-auto flex items-center gap-1">
-                <Pencil size={11} /> Puedes editar o eliminar este reporte mientras esté pendiente o en revisión.
+                <Pencil size={11} /> Puedes editar o eliminar este reporte mientras esté pendiente.
               </span>
               <button
                 type="button"
@@ -554,36 +552,34 @@ export default function ReportDetail() {
             <p className="text-gray-500 italic text-sm">Sin descripción proporcionada.</p>
           )}
 
-          {/* FE-25 · Análisis con IA (solo si el reporte fue procesado por IA) */}
-          {report.ia_procesado && Array.isArray(report.ia_etiquetas) && report.ia_etiquetas.length > 0 && (() => {
-            const principal       = report.ia_etiquetas[0];
-            const categoriaFinal  = report.tipo_contaminacion;
-            const coincide        = principal?.label === categoriaFinal;
-            const confianza       = report.ia_confianza ?? principal?.score ?? 0;
+          {/* FE-25 · Analisis con IA (solo si hay una clasificacion util) */}
+          {iaAnalysis && (() => {
+            const { principal, etiquetas, confianza } = iaAnalysis;
+            const coincide = normalizeEstado(principal.label) === normalizeEstado(report.tipo_contaminacion);
             return (
               <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 sm:p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <Sparkles className="w-4 h-4 text-purple-400" />
                   <p className="text-xs font-semibold uppercase tracking-wide text-purple-300">
-                    Análisis con IA
+                    Analisis con IA
                   </p>
                   <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30">
-                    Confianza {confianza}%
+                    Confianza {Math.round(confianza)}%
                   </span>
                 </div>
 
                 <p className="text-sm text-gray-300 mb-3">
-                  La IA sugirió la categoría{' '}
-                  <span className="font-semibold text-white">{principal?.nombre ?? principal?.label}</span>{' '}
+                  La IA identifico como resultado principal{' '}
+                  <span className="font-semibold text-white">{principal.nombre ?? principal.label}</span>{' '}
                   {coincide ? (
-                    <span className="text-emerald-300">— coincide con la categoría final del reporte.</span>
+                    <span className="text-emerald-300"> y coincide con la categoria final del reporte.</span>
                   ) : (
-                    <span className="text-amber-300">— el usuario eligió una categoría distinta.</span>
+                    <span className="text-amber-300">; el reporte conserva la categoria elegida por el usuario.</span>
                   )}
                 </p>
 
                 <ul className="space-y-2">
-                  {report.ia_etiquetas.slice(0, 5).map((e, idx) => {
+                  {etiquetas.slice(0, 5).map((e, idx) => {
                     const score = Math.max(0, Math.min(100, Number(e.score) || 0));
                     const esTop = idx === 0;
                     return (

@@ -7,6 +7,10 @@ import { motion } from 'motion/react';
 import { useGoogleLogin } from '@react-oauth/google';
 import NebulaBackground from '../components/NebulaBackground';
 
+const getPostLoginPath = (userData, fallback = '/dashboard') => (
+  userData?.rol === 'entidad' && fallback === '/dashboard' ? '/entidad' : fallback
+);
+
 const features = [
   { Icon: MapPin,    text: 'Geolocalización precisa' },
   { Icon: Users,     text: 'Participación colectiva' },
@@ -50,7 +54,7 @@ export default function Login() {
         showToast(`¡Bienvenido, ${userData.nombre}!`, 'success', 5000, {
           position: 'top-center', subtitle: 'Has iniciado sesión con Google',
         });
-        navigate(from, { replace: true });
+        navigate(getPostLoginPath(userData, from), { replace: true });
       } catch (err) {
         showToast(err.response?.data?.message || 'Error al iniciar sesión con Google.', 'error');
       } finally {
@@ -77,7 +81,7 @@ export default function Login() {
         position: 'top-center',
         subtitle: 'Has iniciado sesión correctamente',
       });
-      navigate(from, { replace: true });
+      navigate(getPostLoginPath(userData, from), { replace: true });
     } catch (err) {
       showToast(err.response?.data?.message || 'Correo o contraseña incorrectos.', 'error');
     } finally {

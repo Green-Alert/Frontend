@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { useGoogleLogin } from '@react-oauth/google';
 import {
   MapPin, Users, BarChart2, Bell,
   CheckCircle2, Lock, Smartphone,
@@ -11,6 +10,11 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import NebulaBackground from '../components/NebulaBackground';
 import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
+import { getFacebookAuthUrl, getGoogleAuthUrl } from '../services/api';
+
+const getPostLoginPath = (userData, fallback = '/dashboard') => (
+  userData?.rol === 'entidad' && fallback === '/dashboard' ? '/entidad' : fallback
+);
 
 // ── Contenido del panel izquierdo según modo ─────────────────────────────────
 const LEFT_CONTENT = {
@@ -111,7 +115,7 @@ function OAuthButtons({ oauthLoading, onGoogle, onFacebook, label = 'continúa' 
 export default function Auth() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { login, register, loginWithGoogle, loginWithFacebook: _loginWithFacebook } = useAuth();
+  const { login, register } = useAuth();
   const { showToast } = useToast();
 
   // Estado de modo + dirección de la transición
@@ -138,33 +142,24 @@ export default function Auth() {
   // ── Estado OAuth ──────────────────────────────────────────────────────────
   const [oauthLoading, setOauthLoading] = useState('');
 
-  const triggerGoogle = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setOauthLoading('google');
-      try {
-        const userData = await loginWithGoogle(tokenResponse.access_token);
-        showToast(`¡Bienvenido, ${userData.nombre}!`, 'success', 5000, {
-          position: 'top-center',
-          subtitle: mode === 'login' ? 'Has iniciado sesión con Google' : 'Cuenta creada con Google',
-        });
-        navigate(mode === 'login' ? (location.state?.from || '/dashboard') : '/dashboard', { replace: true });
-      } catch (err) {
-        showToast(err.response?.data?.message || 'Error al continuar con Google.', 'error', 4000, { position: 'top-center' });
-      } finally {
-        setOauthLoading('');
-      }
-    },
-    onError: () => showToast('Inicio de sesión con Google cancelado.', 'warning', 3000, { position: 'top-center' }),
-    flow: 'implicit',
-  });
+  const startOAuthRedirect = async (provider) => {
+    if (oauthLoading) return;
+    setOauthLoading(provider);
 
-  const handleFacebook = () => {
-    const url = new URL('https://www.facebook.com/v19.0/dialog/oauth');
-    url.searchParams.set('client_id',     import.meta.env.VITE_FACEBOOK_APP_ID);
-    url.searchParams.set('redirect_uri',  `${window.location.origin}/auth/callback/facebook`);
-    url.searchParams.set('scope',         'email,public_profile');
-    url.searchParams.set('response_type', 'code');
-    window.location.href = url.toString();
+    try {
+      const requestAuthUrl = provider === 'google' ? getGoogleAuthUrl : getFacebookAuthUrl;
+      const { data } = await requestAuthUrl();
+      const authUrl = data?.data?.authUrl;
+
+      if (!authUrl) {
+        throw new Error('URL OAuth no disponible.');
+      }
+
+      window.location.href = authUrl;
+    } catch (err) {
+      setOauthLoading('');
+      showToast(err.response?.data?.message || 'No se pudo iniciar la autenticación social.', 'error', 4000, { position: 'top-center' });
+    }
   };
 
   // ── Estado del formulario de login ───────────────────────────────────────
@@ -183,7 +178,7 @@ export default function Auth() {
         position: 'top-center',
         subtitle: 'Has iniciado sesión correctamente',
       });
-      navigate(from, { replace: true });
+      navigate(getPostLoginPath(userData, from), { replace: true });
     } catch (err) {
       showToast(err.response?.data?.message || 'Correo o contraseña incorrectos.', 'error', 4000, { position: 'top-center' });
     } finally {
@@ -376,8 +371,8 @@ export default function Auth() {
 
                   <OAuthButtons
                     oauthLoading={oauthLoading}
-                    onGoogle={() => triggerGoogle()}
-                    onFacebook={handleFacebook}
+                    onGoogle={() => startOAuthRedirect('google')}
+                    onFacebook={() => startOAuthRedirect('facebook')}
                     label="continúa"
                   />
 
@@ -504,8 +499,8 @@ export default function Auth() {
 
                   <OAuthButtons
                     oauthLoading={oauthLoading}
-                    onGoogle={() => triggerGoogle()}
-                    onFacebook={handleFacebook}
+                    onGoogle={() => startOAuthRedirect('google')}
+                    onFacebook={() => startOAuthRedirect('facebook')}
                     label="regístrate"
                   />
 

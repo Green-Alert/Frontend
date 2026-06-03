@@ -3,19 +3,17 @@ import { Link } from 'react-router-dom';
 import {
   ShieldCheck, Clock, RefreshCw,
   MapPin, CheckCircle2,
-  Loader2, Eye, Filter, X, MessageSquare, Image as ImageIcon,
+  Loader2, Eye, Filter, X, MessageSquare, Image as ImageIcon, Building2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getReportes, updateReporte, getReporteById } from '../services/api';
+import { asignarReporteEntidad, getEntidades, getReportes, updateReporte, getReporteById } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { helpers, CONFIGURACION_CATEGORIAS } from '../constants/categorias';
 
-// ── Constantes ────────────────────────────────────────────────────────────────
+// â”€â”€ Constantes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const ESTADOS = [
   { value: 'pendiente',   label: 'Pendiente',   color: 'text-gray-400',   bg: 'bg-gray-500/15 border-gray-500/30' },
-  { value: 'en_revision', label: 'En revisión', color: 'text-yellow-400', bg: 'bg-yellow-500/15 border-yellow-500/30' },
-  { value: 'verificado',  label: 'Verificado',  color: 'text-blue-400',   bg: 'bg-blue-500/15 border-blue-500/30' },
   { value: 'en_proceso',  label: 'En proceso',  color: 'text-orange-400', bg: 'bg-orange-500/15 border-orange-500/30' },
   { value: 'resuelto',    label: 'Resuelto',    color: 'text-green-400',  bg: 'bg-green-500/15 border-green-500/30' },
   { value: 'rechazado',   label: 'Rechazado',   color: 'text-red-400',    bg: 'bg-red-500/15 border-red-500/30' },
@@ -41,31 +39,39 @@ const SEVERIDAD_CLASS = {
   critico: 'bg-red-600/25 text-rose-200 border-red-500/60',
 };
 const SEVERIDAD_LABEL = { bajo: 'Baja', medio: 'Media', alto: 'Alta', critico: 'Crítico' };
+const ESTADOS_VISIBLES = ESTADOS;
+const TRANSICIONES_BACKEND = {
+  pendiente: ['en_proceso', 'rechazado'],
+  en_proceso: ['resuelto', 'rechazado'],
+  resuelto: [],
+  rechazado: [],
+};
+const PRIORIDADES_ASIGNACION = [
+  { value: 'baja', label: 'Baja' },
+  { value: 'media', label: 'Media' },
+  { value: 'alta', label: 'Alta' },
+  { value: 'critica', label: 'Critica' },
+];
+const TIPOS_ASIGNACION = [
+  { value: 'principal', label: 'Principal' },
+  { value: 'apoyo', label: 'Apoyo' },
+];
+const TIPOS_ASIGNACION_VALIDOS = new Set(TIPOS_ASIGNACION.map((tipo) => tipo.value));
 
 const formatDate = (iso) =>
   new Date(iso).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-// Transiciones de estado permitidas para el moderador
-const TRANSICIONES = {
-  pendiente:   ['en_revision', 'rechazado'],
-  en_revision: ['verificado', 'en_proceso', 'rechazado'],
-  verificado:  ['en_proceso', 'resuelto', 'rechazado'],
-  en_proceso:  ['resuelto', 'rechazado'],
-  resuelto:    [],
-  rechazado:   ['pendiente'],
-};
 
 function getBadge(estado) {
   const e = ESTADOS.find((x) => x.value === estado);
   return e ?? { label: estado, color: 'text-gray-400', bg: 'bg-gray-500/15 border-gray-500/30' };
 }
 
-// ── Tarjeta de reporte ────────────────────────────────────────────────────────
+// â”€â”€ Tarjeta de reporte â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function ReporteCard({ reporte, onEstadoChange, updating }) {
+function ReporteCard({ reporte, onEstadoChange, onOpenAsignacion, updating }) {
   const categoriaConfig = helpers.obtenerConfig(reporte.tipo_contaminacion);
   const badge = getBadge(reporte.estado);
-  const transiciones = TRANSICIONES[reporte.estado] ?? [];
+  const transiciones = TRANSICIONES_BACKEND[reporte.estado] ?? [];
   const [showEv, setShowEv]   = useState(false);
   const [evidencias, setEv]   = useState(null);
   const [evLoading, setEvLoad]= useState(false);
@@ -200,6 +206,13 @@ function ReporteCard({ reporte, onEstadoChange, updating }) {
             >
               <Eye size={12} /> Ver detalle
             </Link>
+            <button
+              type="button"
+              onClick={() => onOpenAsignacion(reporte)}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-gray-700 text-gray-400 hover:border-blue-500/40 hover:text-blue-300 transition-colors"
+            >
+              <Building2 size={12} /> Asignar entidad
+            </button>
 
             {transiciones.length > 0 && (
               <div className="flex items-center gap-1.5 ml-auto flex-wrap">
@@ -216,7 +229,7 @@ function ReporteCard({ reporte, onEstadoChange, updating }) {
                       {updating === reporte.id_reporte ? (
                         <Loader2 size={10} className="animate-spin inline" />
                       ) : (
-                        <>→ {b.label}</>
+                        <>a {b.label}</>
                       )}
                     </button>
                   );
@@ -263,7 +276,7 @@ function ReporteCard({ reporte, onEstadoChange, updating }) {
   );
 }
 
-// ── Página principal ──────────────────────────────────────────────────────────
+// â”€â”€ Pagina principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function Moderacion() {
   const { showToast } = useToast();
@@ -276,6 +289,10 @@ export default function Moderacion() {
   const [filtroSeveridad,setFiltroSeveridad]= useState('');
   const [rechazoModal,   setRechazoModal]   = useState(null); // { id, nuevoEstado }
   const [rechazoComent,  setRechazoComent]  = useState('');
+  const [entidades,      setEntidades]      = useState([]);
+  const [asignacionModal,setAsignacionModal]= useState(null);
+  const [asignacionForm, setAsignacionForm] = useState({ id_entidad: '', prioridad: 'media', tipo_asignacion: 'principal' });
+  const [asignando,      setAsignando]      = useState(false);
 
   const hayFiltrosExtra = filtroTipo !== '' || filtroSeveridad !== '';
 
@@ -302,8 +319,14 @@ export default function Moderacion() {
 
   useEffect(() => { fetchReportes(); }, [fetchReportes]);
 
+  useEffect(() => {
+    getEntidades()
+      .then(({ data }) => setEntidades(data?.data?.entidades ?? []))
+      .catch(() => setEntidades([]));
+  }, []);
+
   const handleEstadoChange = async (id, nuevoEstado) => {
-    if (nuevoEstado === 'rechazado') {
+    if (nuevoEstado === 'rechazado' || nuevoEstado === 'resuelto') {
       setRechazoComent('');
       setRechazoModal({ id, nuevoEstado });
       return;
@@ -326,13 +349,44 @@ export default function Moderacion() {
     setUpdating(id);
     try {
       await updateReporte(id, { estado: nuevoEstado, comentario_moderacion: rechazoComent.trim() });
-      showToast('Reporte rechazado correctamente.', 'success');
+      showToast(`Reporte actualizado a "${getBadge(nuevoEstado).label}".`, 'success');
       setReportes((prev) => prev.filter((r) => r.id_reporte !== id));
       setRechazoModal(null);
     } catch (err) {
-      showToast(err.response?.data?.message ?? 'Error al rechazar el reporte.', 'error');
+      showToast(err.response?.data?.message ?? 'Error al actualizar el reporte.', 'error');
     } finally {
       setUpdating(null);
+    }
+  };
+
+  const handleOpenAsignacion = (reporte) => {
+    setAsignacionModal(reporte);
+    setAsignacionForm({
+      id_entidad: entidades[0]?.id_entidad ? String(entidades[0].id_entidad) : '',
+      prioridad: reporte.nivel_severidad === 'critico' ? 'critica' : 'media',
+      tipo_asignacion: 'principal',
+    });
+  };
+
+  const handleAsignarEntidad = async () => {
+    if (!asignacionModal || !asignacionForm.id_entidad) return;
+    if (!TIPOS_ASIGNACION_VALIDOS.has(asignacionForm.tipo_asignacion)) {
+      showToast('El tipo de asignacion debe ser Principal o Apoyo.', 'error');
+      return;
+    }
+    setAsignando(true);
+    try {
+      await asignarReporteEntidad(asignacionModal.id_reporte, {
+        id_entidad: Number(asignacionForm.id_entidad),
+        prioridad: asignacionForm.prioridad,
+        tipo_asignacion: asignacionForm.tipo_asignacion,
+      });
+      showToast('Reporte asignado a la entidad correctamente.', 'success');
+      setAsignacionModal(null);
+    } catch (err) {
+      showToast(err.response?.data?.message ?? 'No se pudo asignar la entidad.', 'error');
+    } finally {
+      setAsignando(false);
     }
   };
 
@@ -347,12 +401,12 @@ export default function Moderacion() {
               <ShieldCheck className="w-5 h-5 text-blue-400" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white">
-              Panel de <span className="text-green-400">Moderación</span>
+              Panel de <span className="text-green-400">Moderacion</span>
             </h1>
           </div>
           <p className="text-sm text-gray-500 pl-[52px]">
             {loading
-              ? 'Cargando reportes…'
+              ? 'Cargando reportes...'
               : `${reportes.length} reporte${reportes.length !== 1 ? 's' : ''} en estado "${getBadge(filtroEstado).label}"`}
           </p>
         </div>
@@ -365,11 +419,11 @@ export default function Moderacion() {
         </button>
       </div>
 
-      {/* Barra de filtros — card unificada */}
+      {/* Barra de filtros - card unificada */}
       <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-4 space-y-3">
         {/* Tabs de estado */}
         <div className="flex gap-1.5 flex-wrap">
-          {ESTADOS.map((e) => (
+          {ESTADOS_VISIBLES.map((e) => (
             <button
               key={e.value}
               onClick={() => setFiltroEstado(e.value)}
@@ -397,7 +451,7 @@ export default function Moderacion() {
             onChange={(e) => setFiltroTipo(e.target.value)}
             className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
           >
-            <option value="">Todas las categorías</option>
+            <option value="">Todas las categorias</option>
             {CATEGORIAS_OPCIONES.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
@@ -451,6 +505,7 @@ export default function Moderacion() {
                 key={r.id_reporte}
                 reporte={r}
                 onEstadoChange={handleEstadoChange}
+                onOpenAsignacion={handleOpenAsignacion}
                 updating={updating}
               />
             ))}
@@ -458,7 +513,88 @@ export default function Moderacion() {
         </div>
       )}
 
-      {/* Modal de rechazo con comentario obligatorio */}
+      <AnimatePresence>
+        {asignacionModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-gray-900 border border-gray-700 rounded-xl p-6 max-w-md w-full shadow-2xl"
+            >
+              <div className="flex items-start gap-3 mb-4">
+                <Building2 className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-100 mb-1">Asignar entidad responsable</h3>
+                  <p className="text-xs text-gray-400 line-clamp-2">{asignacionModal.titulo}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block">
+                  <span className="block text-xs text-gray-500 mb-1">Entidad</span>
+                  <select
+                    value={asignacionForm.id_entidad}
+                    onChange={(e) => setAsignacionForm((form) => ({ ...form, id_entidad: e.target.value }))}
+                    className="w-full bg-gray-800 border border-gray-700 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none"
+                  >
+                    {entidades.length === 0 ? (
+                      <option value="">Sin entidades activas</option>
+                    ) : entidades.map((entidad) => (
+                      <option key={entidad.id_entidad} value={entidad.id_entidad}>{entidad.nombre}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="block text-xs text-gray-500 mb-1">Prioridad</span>
+                  <select
+                    value={asignacionForm.prioridad}
+                    onChange={(e) => setAsignacionForm((form) => ({ ...form, prioridad: e.target.value }))}
+                    className="w-full bg-gray-800 border border-gray-700 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none"
+                  >
+                    {PRIORIDADES_ASIGNACION.map((prioridad) => (
+                      <option key={prioridad.value} value={prioridad.value}>{prioridad.label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="block text-xs text-gray-500 mb-1">Tipo de asignacion</span>
+                  <select
+                    value={asignacionForm.tipo_asignacion}
+                    onChange={(e) => setAsignacionForm((form) => ({ ...form, tipo_asignacion: e.target.value }))}
+                    className="w-full bg-gray-800 border border-gray-700 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none"
+                  >
+                    {TIPOS_ASIGNACION.map((tipo) => (
+                      <option key={tipo.value} value={tipo.value}>{tipo.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="flex gap-3 justify-end mt-5">
+                <button
+                  onClick={() => setAsignacionModal(null)}
+                  disabled={asignando}
+                  className="btn-secondary text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleAsignarEntidad}
+                  disabled={asignando || !asignacionForm.id_entidad}
+                  className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-all active:scale-95 disabled:opacity-40"
+                >
+                  {asignando ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Asignar'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de comentario obligatorio para cierre */}
       <AnimatePresence>
         {rechazoModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -471,14 +607,18 @@ export default function Moderacion() {
               <div className="flex items-start gap-3 mb-4">
                 <MessageSquare className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-100 mb-1">Rechazar reporte</h3>
-                  <p className="text-xs text-gray-400">Debes justificar el rechazo con un comentario.</p>
+                  <h3 className="text-sm font-semibold text-gray-100 mb-1">
+                    {rechazoModal.nuevoEstado === 'resuelto' ? 'Resolver reporte' : 'Rechazar reporte'}
+                  </h3>
+                  <p className="text-xs text-gray-400">Debes registrar un comentario para cerrar este cambio de estado.</p>
                 </div>
               </div>
               <textarea
                 value={rechazoComent}
                 onChange={(e) => setRechazoComent(e.target.value)}
-                placeholder="Ej: El reporte está duplicado, fuera de área, no tiene evidencia suficiente..."
+                placeholder={rechazoModal.nuevoEstado === 'resuelto'
+                  ? 'Ej: La situacion fue atendida y se verifico el cierre del caso.'
+                  : 'Ej: El reporte esta duplicado, fuera de area o no tiene evidencia suficiente.'}
                 rows={3}
                 className="w-full bg-gray-800 border border-gray-700 focus:border-red-500 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none resize-none transition-colors mb-4"
               />
@@ -495,7 +635,7 @@ export default function Moderacion() {
                   disabled={!rechazoComent.trim() || updating === rechazoModal.id}
                   className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white transition-all active:scale-95 disabled:opacity-40"
                 >
-                  {updating === rechazoModal.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar rechazo'}
+                  {updating === rechazoModal.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar'}
                 </button>
               </div>
             </motion.div>

@@ -11,19 +11,21 @@ import { useAuth } from '../context/AuthContext';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
-const ROLES = ['ciudadano', 'moderador', 'admin'];
+const ROLES = ['ciudadano', 'moderador', 'admin', 'entidad'];
 
 const rolBadge = {
   ciudadano: 'bg-green-500/15 text-green-400 border-green-500/30',
   moderador: 'bg-blue-500/15  text-blue-400  border-blue-500/30',
   admin:     'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
+  entidad:   'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
 };
 const rolIcon = {
   ciudadano: UserCircle,
   moderador: ShieldCheck,
   admin:     Shield,
+  entidad:   ShieldCheck,
 };
-const rolLabel = { ciudadano: 'Ciudadano', moderador: 'Moderador', admin: 'Admin' };
+const rolLabel = { ciudadano: 'Ciudadano', moderador: 'Moderador', admin: 'Admin', entidad: 'Entidad' };
 
 const formatDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';

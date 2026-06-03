@@ -5,13 +5,19 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useNavigate } from 'react-router-dom';
 import { helpers } from '../constants/categorias';
+import {
+  ESTADO_REPORTE_MAP_BADGE_STYLE,
+  ESTADO_REPORTE_MAP_COLOR,
+  ESTADO_SEGUIMIENTO_LABEL,
+  getEstadoSeguimientoReporte,
+} from '../utils/reporteEstado';
 
 const MAP_TILES = [
   {
     key: 'light',
     label: 'Claro',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   },
   {
     key: 'dark',
@@ -24,6 +30,7 @@ const MAP_TILES = [
     label: 'Satélite',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; <a href="https://www.esri.com/">Esri</a>, Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP',
+    labelsUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
   },
 ];
 
@@ -42,25 +49,6 @@ const createIcon = (color) =>
     popupAnchor: [0, -12],
   });
 
-// FE-16: colores por ESTADO (no por severidad)
-const estadoColors = {
-  pendiente:   '#ef4444',
-  en_revision: '#fb923c',
-  en_proceso:  '#fb923c',
-  verificado:  '#4ade80',
-  resuelto:    '#4ade80',
-  rechazado:   '#6b7280',
-};
-
-const estadoBadgeStyle = {
-  pendiente:   { background: '#450a0a', color: '#fca5a5' },
-  en_revision: { background: '#431407', color: '#fdba74' },
-  en_proceso:  { background: '#431407', color: '#fdba74' },
-  verificado:  { background: '#052e16', color: '#86efac' },
-  resuelto:    { background: '#052e16', color: '#86efac' },
-  rechazado:   { background: '#1f2937', color: '#9ca3af' },
-};
-
 const severityBadgeStyle = {
   critico: { background: '#4c0519', color: '#fda4af' },
   alto:    { background: '#450a0a', color: '#fca5a5' },
@@ -69,11 +57,6 @@ const severityBadgeStyle = {
 };
 
 const severityLabel = { bajo: 'Baja', medio: 'Media', alto: 'Alta', critico: 'Crítico' };
-
-const estadoLabel = {
-  pendiente: 'Pendiente', en_revision: 'En revisión', verificado: 'Verificado',
-  en_proceso: 'En proceso', resuelto: 'Resuelto', rechazado: 'Rechazado',
-};
 
 function FitBounds({ points }) {
   const map = useMap();
@@ -161,6 +144,15 @@ const TIPO_LABEL_FALLBACK = {
   otro: 'Otro',
 };
 
+function FlyToLocation({ flyTo }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!flyTo) return;
+    map.flyTo([flyTo.lat, flyTo.lng], flyTo.zoom ?? 13, { animate: true, duration: 1.2 });
+  }, [flyTo, map]);
+  return null;
+}
+
 function FitToZonas({ zonas }) {
   const map = useMap();
   const fittedKeyRef = useRef(null);
@@ -246,7 +238,7 @@ function PrediccionLayer({ zonas = [] }) {
   );
 }
 
-export default memo(function ReportsMap({ reports = [], mode = 'cluster', zonas = [] }) {
+export default memo(function ReportsMap({ reports = [], mode = 'cluster', zonas = [], flyTo = null }) {
   const navigate = useNavigate();
   const withCoords = reports.filter((r) => r.latitud && r.longitud);
   const [mapStyle, setMapStyle] = useState(() => localStorage.getItem('ga-map-style') || 'light');
@@ -297,14 +289,22 @@ export default memo(function ReportsMap({ reports = [], mode = 'cluster', zonas 
         style={{ height: '100%', width: '100%' }}
         className={`z-0 ga-map-${mapStyle}`}
       >
-      <TileLayer
+        <TileLayer
           url={tile.url}
           attribution={tile.attribution}
           maxZoom={19}
-      />
+        />
+        {tile.labelsUrl && (
+          <TileLayer
+            url={tile.labelsUrl}
+            maxZoom={19}
+            opacity={1}
+          />
+        )}
       {isPrediccion ? (
         <>
           <FitToZonas zonas={zonas} />
+          {flyTo && <FlyToLocation flyTo={flyTo} />}
           <PrediccionLayer zonas={zonas} />
         </>
       ) : (
@@ -318,8 +318,9 @@ export default memo(function ReportsMap({ reports = [], mode = 'cluster', zonas 
         {withCoords.map((r) => {
         const cfg       = helpers.obtenerConfig(r.tipo_contaminacion);
         const catColor  = cfg?.color ?? '#94a3b8';
-        const markerColor = estadoColors[r.estado] ?? '#94a3b8';
-        const estSt     = estadoBadgeStyle[r.estado] ?? { background: '#1f2937', color: '#9ca3af' };
+        const estadoSeguimiento = getEstadoSeguimientoReporte(r);
+        const markerColor = ESTADO_REPORTE_MAP_COLOR[estadoSeguimiento] ?? '#94a3b8';
+        const estSt = ESTADO_REPORTE_MAP_BADGE_STYLE[estadoSeguimiento] ?? { background: '#1f2937', color: '#9ca3af' };
         const svSt      = severityBadgeStyle[r.nivel_severidad] ?? { background: '#1f2937', color: '#9ca3af' };
         const lugar = [r.municipio, r.departamento].filter(Boolean).join(', ') || r.direccion || '';
 
@@ -365,7 +366,7 @@ export default memo(function ReportsMap({ reports = [], mode = 'cluster', zonas 
                 {/* Badges: estado (primario) + severidad (secundario) */}
                 <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '8px' }}>
                   <span style={{ ...estSt, padding: '2px 8px', borderRadius: 9999, fontSize: '11px', fontWeight: 600 }}>
-                    {estadoLabel[r.estado] ?? r.estado}
+                    {ESTADO_SEGUIMIENTO_LABEL[estadoSeguimiento] ?? estadoSeguimiento}
                   </span>
                   <span style={{ ...svSt, padding: '2px 8px', borderRadius: 9999, fontSize: '11px' }}>
                     {severityLabel[r.nivel_severidad] ?? r.nivel_severidad}

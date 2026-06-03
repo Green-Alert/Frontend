@@ -23,7 +23,7 @@ export default function VerificarEmail() {
 
   // Si ya verificó, redirigir
   useEffect(() => {
-    if (user?.email_verificado) navigate('/dashboard', { replace: true });
+    if (user?.email_verificado) navigate(user?.rol === 'entidad' ? '/entidad' : '/dashboard', { replace: true });
   }, [user, navigate]);
 
   // Countdown
@@ -72,7 +72,7 @@ export default function VerificarEmail() {
       await verificarEmailOtp(code);
       await refreshUser();
       showToast('Correo verificado correctamente', 'success', 4000, { position: 'top-center' });
-      navigate('/dashboard', { replace: true });
+      navigate(user?.rol === 'entidad' ? '/entidad' : '/dashboard', { replace: true });
     } catch (e) {
       setError(e.response?.data?.message || 'Código incorrecto o expirado.');
       setDigits(['', '', '', '', '', '']);

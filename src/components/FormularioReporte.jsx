@@ -100,6 +100,7 @@ export default function FormularioReporte() {
   //                categoria, nombre, confianza, etiquetas, mensajeError }
   const [iaAnalisis, setIaAnalisis] = useState({ estado: 'idle' });
   const iaInputRef = useRef(null);
+  const submitLockRef = useRef(false);
 
   // FE-31: sugerencia de título y descripción con IA a partir de imágenes.
   // sugerIA = { estado: 'idle'|'analizando'|'aplicada'|'error', mensajeError? }
@@ -417,7 +418,9 @@ export default function FormularioReporte() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitLockRef.current || submitting || compressing) return;
     if (!canNext()) return;
+    submitLockRef.current = true;
     setSubmitting(true);
     try {
       const descripcionFinal = form.tipo_contaminacion === TIPOS_CONTAMINACION.OTRO && form.otro_especifica
@@ -442,8 +445,17 @@ export default function FormularioReporte() {
 
       // FE-25: persistir resultado de la IA solo si el usuario aceptó la sugerencia.
       if (iaAnalisis.estado === 'aceptada' && iaAnalisis.categoria) {
-        payload.append('ia_etiquetas', JSON.stringify(iaAnalisis.etiquetas ?? []));
-        payload.append('ia_confianza', String(iaAnalisis.confianza ?? 0));
+        const confianzaIa = Number(iaAnalisis.confianza) || 0;
+        const etiquetasIa = [
+          {
+            label: iaAnalisis.categoria,
+            nombre: iaAnalisis.nombre ?? iaAnalisis.categoria,
+            score: confianzaIa,
+          },
+          ...(Array.isArray(iaAnalisis.etiquetas) ? iaAnalisis.etiquetas : []),
+        ];
+        payload.append('ia_etiquetas', JSON.stringify(etiquetasIa));
+        payload.append('ia_confianza', String(confianzaIa));
         payload.append('ia_procesado', '1');
       }
 
@@ -468,6 +480,7 @@ export default function FormularioReporte() {
     } catch (err) {
       showToast(err.response?.data?.message || 'Error al enviar el reporte. Intenta de nuevo.', 'error');
     } finally {
+      submitLockRef.current = false;
       setSubmitting(false);
     }
   };
@@ -1279,7 +1292,7 @@ export default function FormularioReporte() {
             <button
               type="button"
               onClick={goNext}
-              disabled={!canNext()}
+              disabled={!canNext() || submitting || compressing}
               className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto"
             >
               Siguiente →

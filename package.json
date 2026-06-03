@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext .js,.jsx --max-warnings 0",
-    "test": "vitest run",
+    "test": "vitest run --root .",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {

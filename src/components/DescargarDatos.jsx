@@ -11,38 +11,42 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logoSrc from '../assets/GreenAlert - logo principal.png';
 
-// ── Secciones disponibles ─────────────────────────────────────────────────────
+// Secciones disponibles para exportar (perfil, reportes, cuenta)
 const SECCIONES = [
-  { id: 'perfil',   label: 'Perfil y datos personales', icon: '👤', desc: 'Nombre, correo, teléfono, rol y fecha de registro.' },
-  { id: 'reportes', label: 'Mis reportes ambientales',  icon: '📋', desc: 'Todos los reportes que has creado en la plataforma.' },
-  { id: 'cuenta',   label: 'Información de cuenta',     icon: '🔐', desc: 'Estado de verificación, rol asignado y actividad.' },
+  { id: 'perfil',   label: 'Perfil y datos personales', icon: 'user', desc: 'Nombre, correo, telefono, rol y fecha de registro.' },
+  { id: 'reportes', label: 'Mis reportes ambientales',  icon: 'reports', desc: 'Todos los reportes que has creado en la plataforma.' },
+  { id: 'cuenta',   label: 'Informacion de cuenta',     icon: 'lock', desc: 'Estado de verificacion, rol asignado y actividad.' },
 ];
 
-// ── Paleta de colores para PDF (fondo blanco, texto oscuro) ───────────────────
+const ICONOS_SECCION = {
+  user: User,
+  reports: ClipboardList,
+  lock: ShieldCheck,
+};
+
+// â”€â”€ Paleta de colores para PDF (fondo blanco, texto oscuro) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const C = {
-  verde:      [21, 128, 61],    // #15803d  — titulos de sección
-  verdeClaro: [220, 252, 231],  // #dcfce7  — fondo accent suave
-  verdeBorde: [187, 247, 208],  // #bbf7d0  — bordes accent
-  oscuro:     [30, 41, 59],     // #1e293b  — texto principal
-  medio:      [71, 85, 105],    // #475569  — texto secundario
-  claro:      [148, 163, 184],  // #94a3b8  — texto terciario
-  filaAlt:    [248, 250, 252],  // #f8fafc  — fila alternada
+  verde:      [21, 128, 61],    // #15803d  - titulos de seccion
+  verdeClaro: [220, 252, 231],  // #dcfce7  - fondo accent suave
+  verdeBorde: [187, 247, 208],  // #bbf7d0  - bordes accent
+  oscuro:     [30, 41, 59],     // #1e293b  - texto principal
+  medio:      [71, 85, 105],    // #475569  - texto secundario
+  claro:      [148, 163, 184],  // #94a3b8  - texto terciario
+  filaAlt:    [248, 250, 252],  // #f8fafc  - fila alternada
   filaNorm:   [255, 255, 255],  // blanco
-  borde:      [226, 232, 240],  // #e2e8f0  — líneas
+  borde:      [226, 232, 240],  // #e2e8f0  - lÃ­neas
   headerBg:   [21, 128, 61],    // verde oscuro para headers de tabla
 };
 
-// ── Formateo de fecha ─────────────────────────────────────────────────────────
+// â”€â”€ Formateo de fecha â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const fmtFecha = (v) => {
-  if (!v) return '—';
+  if (!v) return '-';
   try { return new Date(v).toLocaleDateString('es-CO', { dateStyle: 'medium' }); }
   catch { return String(v); }
 };
 
 const ESTADO_LABELS = {
   pendiente:   'Pendiente',
-  en_revision: 'En revisión',
-  verificado:  'Verificado',
   en_proceso:  'En proceso',
   resuelto:    'Resuelto',
   rechazado:   'Rechazado',
@@ -55,7 +59,7 @@ const SEVERIDAD_LABELS = {
   critico:  'Crítico',
 };
 
-// ── Cargar imagen como base64 ─────────────────────────────────────────────────
+// â”€â”€ Cargar imagen como base64 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function cargarImagen(src) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -73,7 +77,7 @@ function cargarImagen(src) {
   });
 }
 
-// ── Generador de PDF ──────────────────────────────────────────────────────────
+// â”€â”€ Generador de PDF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function generarPDF(perfil, reportes, seleccion) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
@@ -83,7 +87,7 @@ async function generarPDF(perfil, reportes, seleccion) {
   // Cargar logo
   const logoBase64 = await cargarImagen(logoSrc);
 
-  // ── Marca de agua en una página ──
+  // â”€â”€ Marca de agua en una pÃ¡gina â”€â”€
   const marcaDeAgua = (pageH) => {
     if (!logoBase64) return;
     const wSize = 90;
@@ -94,7 +98,7 @@ async function generarPDF(perfil, reportes, seleccion) {
     doc.setGState(new doc.GState({ opacity: 1 }));
   };
 
-  // ── Encabezado en páginas secundarias ──
+  // â”€â”€ Encabezado en pÃ¡ginas secundarias â”€â”€
   const cabeceraRepetida = () => {
     // Franja superior
     doc.setFillColor(250, 250, 250);
@@ -110,14 +114,14 @@ async function generarPDF(perfil, reportes, seleccion) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(...C.claro);
-    doc.text('Exportación de Datos', 43, 8.5);
+    doc.text('Exportacion de Datos', 43, 8.5);
 
     doc.setDrawColor(...C.borde);
     doc.setLineWidth(0.3);
     doc.line(0, 14, W, 14);
   };
 
-  // ── Título de sección ──
+  // â”€â”€ Titulo de seccion â”€â”€
   const seccionTitulo = (titulo) => {
     if (y > H - 35) { doc.addPage(); cabeceraRepetida(); marcaDeAgua(H); y = 22; }
     doc.setFillColor(...C.verde);
@@ -129,9 +133,9 @@ async function generarPDF(perfil, reportes, seleccion) {
     y += 13;
   };
 
-  // ═════════════════════════════════════════════════════════════════════════
-  // PÁGINA 1 — ENCABEZADO PRINCIPAL
-  // ═════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // PÃGINA 1 - ENCABEZADO PRINCIPAL
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   // Marca de agua
   marcaDeAgua(H);
@@ -144,7 +148,7 @@ async function generarPDF(perfil, reportes, seleccion) {
   doc.setFillColor(248, 250, 252);
   doc.rect(0, 1.2, W, 42, 'F');
 
-  // Logo al lado del título
+  // Logo al lado del tÃ­tulo
   if (logoBase64) {
     doc.addImage(logoBase64, 'PNG', 14, 6, 22, 22);
   }
@@ -161,23 +165,23 @@ async function generarPDF(perfil, reportes, seleccion) {
   doc.setTextColor(...C.medio);
   doc.text('Monitoreo Ambiental Ciudadano', textX, 25);
 
-  // Fecha de generación
+  // Fecha de generaciÃ³n
   doc.setFontSize(8);
   doc.setTextColor(...C.claro);
   const ahora = new Date().toLocaleString('es-CO', { dateStyle: 'long', timeStyle: 'short' });
   doc.text(`Generado: ${ahora}`, W - 14, 18, { align: 'right' });
 
-  // Línea divisora
+  // LÃ­nea divisora
   doc.setDrawColor(...C.verdeBorde);
   doc.setLineWidth(0.5);
   doc.line(14, 35, W - 14, 35);
 
-  // Título del documento
+  // Titulo del documento
   y = 50;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(...C.oscuro);
-  doc.text('Exportación de Datos del Usuario', 14, y);
+  doc.text('Exportacion de Datos del Usuario', 14, y);
   y += 8;
 
   // Nombre del usuario
@@ -194,14 +198,14 @@ async function generarPDF(perfil, reportes, seleccion) {
     y += 12;
   }
 
-  // ── PERFIL ──
+  // â”€â”€ PERFIL â”€â”€
   if (seleccion.perfil && perfil) {
     seccionTitulo('Perfil / Datos Personales');
     const filas = [
-      ['Nombre completo', `${perfil.nombre ?? ''} ${perfil.apellido ?? ''}`.trim() || '—'],
-      ['Correo electrónico', perfil.email ?? '—'],
-      ['Teléfono', perfil.telefono ?? 'No registrado'],
-      ['Rol', (perfil.rol ?? '—').charAt(0).toUpperCase() + (perfil.rol ?? '').slice(1)],
+      ['Nombre completo', `${perfil.nombre ?? ''} ${perfil.apellido ?? ''}`.trim() || '-'],
+      ['Correo electronico', perfil.email ?? '-'],
+      ['Telefono', perfil.telefono ?? 'No registrado'],
+      ['Rol', (perfil.rol ?? '-').charAt(0).toUpperCase() + (perfil.rol ?? '').slice(1)],
       ['Fecha de registro', fmtFecha(perfil.created_at)],
     ];
     autoTable(doc, {
@@ -221,21 +225,21 @@ async function generarPDF(perfil, reportes, seleccion) {
     y = doc.lastAutoTable.finalY + 12;
   }
 
-  // ── REPORTES ──
+  // â”€â”€ REPORTES â”€â”€
   if (seleccion.reportes && reportes.length > 0) {
     if (y > H - 45) { doc.addPage(); cabeceraRepetida(); marcaDeAgua(H); y = 22; }
     seccionTitulo(`Mis Reportes Ambientales (${reportes.length})`);
     autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
-      head: [['#', 'Título', 'Tipo', 'Severidad', 'Estado', 'Municipio', 'Fecha']],
+      head: [['#', 'Titulo', 'Tipo', 'Severidad', 'Estado', 'Municipio', 'Fecha']],
       body: reportes.map((r, i) => [
         i + 1,
-        r.titulo ?? '—',
+        r.titulo ?? '-',
         (r.tipo_contaminacion ?? '').replace(/_/g, ' '),
-        SEVERIDAD_LABELS[r.nivel_severidad] ?? r.nivel_severidad ?? '—',
-        ESTADO_LABELS[r.estado] ?? r.estado ?? '—',
-        r.municipio ?? '—',
+        SEVERIDAD_LABELS[r.nivel_severidad] ?? r.nivel_severidad ?? '-',
+        ESTADO_LABELS[r.estado] ?? r.estado ?? '-',
+        r.municipio ?? '-',
         fmtFecha(r.created_at),
       ]),
       theme: 'grid',
@@ -257,15 +261,15 @@ async function generarPDF(perfil, reportes, seleccion) {
     y = doc.lastAutoTable.finalY + 12;
   }
 
-  // ── CUENTA ──
+  // â”€â”€ CUENTA â”€â”€
   if (seleccion.cuenta && perfil) {
     if (y > H - 45) { doc.addPage(); cabeceraRepetida(); marcaDeAgua(H); y = 22; }
-    seccionTitulo('Información de Cuenta');
+    seccionTitulo('Informacion de Cuenta');
     const filas = [
-      ['Email verificado', perfil.email_verificado ? 'Sí ✓' : 'No'],
-      ['Rol asignado', (perfil.rol ?? '—').charAt(0).toUpperCase() + (perfil.rol ?? '').slice(1)],
-      ['Cuenta activa', perfil.activo !== undefined ? (perfil.activo ? 'Sí ✓' : 'No') : '—'],
-      ['Último acceso', fmtFecha(perfil.ultimo_acceso)],
+      ['Email verificado', perfil.email_verificado ? 'Si' : 'No'],
+      ['Rol asignado', (perfil.rol ?? '-').charAt(0).toUpperCase() + (perfil.rol ?? '').slice(1)],
+      ['Cuenta activa', perfil.activo !== undefined ? (perfil.activo ? 'Si' : 'No') : '-'],
+      ['Ultimo acceso', fmtFecha(perfil.ultimo_acceso)],
       ['Total de reportes', String(reportes.length)],
     ];
     autoTable(doc, {
@@ -284,7 +288,7 @@ async function generarPDF(perfil, reportes, seleccion) {
     y = doc.lastAutoTable.finalY + 12;
   }
 
-  // ── Aviso de confidencialidad ──
+  // â”€â”€ Aviso de confidencialidad â”€â”€
   if (y > H - 30) { doc.addPage(); cabeceraRepetida(); marcaDeAgua(H); y = 22; }
   doc.setFillColor(...C.verdeClaro);
   doc.setDrawColor(...C.verdeBorde);
@@ -293,18 +297,18 @@ async function generarPDF(perfil, reportes, seleccion) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(...C.verde);
-  doc.text('Este documento contiene información personal y confidencial. Fue generado a solicitud del titular de los datos.', W / 2, y + 5.5, { align: 'center' });
-  doc.text('GreenAlert — Plataforma de Monitoreo Ambiental Ciudadano', W / 2, y + 10, { align: 'center' });
+  doc.text('Este documento contiene informacion personal y confidencial. Fue generado a solicitud del titular de los datos.', W / 2, y + 5.5, { align: 'center' });
+  doc.text('GreenAlert - Plataforma de Monitoreo Ambiental Ciudadano', W / 2, y + 10, { align: 'center' });
 
-  // ═════════════════════════════════════════════════════════════════════════
-  // PIE DE PÁGINA — todas las páginas
-  // ═════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // PIE DE PÃGINA - todas las pÃ¡ginas
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   const totalPags = doc.internal.getNumberOfPages();
   for (let i = 1; i <= totalPags; i++) {
     doc.setPage(i);
     const pH = doc.internal.pageSize.getHeight();
 
-    // Línea
+    // LÃ­nea
     doc.setDrawColor(...C.borde);
     doc.setLineWidth(0.3);
     doc.line(14, pH - 14, W - 14, pH - 14);
@@ -316,8 +320,8 @@ async function generarPDF(perfil, reportes, seleccion) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(...C.claro);
-    doc.text('GreenAlert © 2026 — Monitoreo Ambiental Ciudadano', 14, pH - 6);
-    doc.text(`Página ${i} de ${totalPags}`, W - 14, pH - 6, { align: 'right' });
+    doc.text('GreenAlert (c) 2026 - Monitoreo Ambiental Ciudadano', 14, pH - 6);
+    doc.text(`Pagina ${i} de ${totalPags}`, W - 14, pH - 6, { align: 'right' });
 
     // Logo mini en el footer
     if (logoBase64) {
@@ -332,7 +336,7 @@ async function generarPDF(perfil, reportes, seleccion) {
   return nombreArchivo;
 }
 
-// ── Componente principal ──────────────────────────────────────────────────────
+// â”€â”€ Componente principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function DescargarDatos({ open, onClose }) {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -436,7 +440,7 @@ export default function DescargarDatos({ open, onClose }) {
               </div>
               <div>
                 <h2 className="text-base font-semibold text-white">Descargar mis datos</h2>
-                <p className="text-xs text-gray-500">Selecciona qué incluir en tu PDF</p>
+                <p className="text-xs text-gray-500">Selecciona que incluir en tu PDF</p>
               </div>
             </div>
             <button
@@ -462,7 +466,7 @@ export default function DescargarDatos({ open, onClose }) {
                 {/* Control seleccionar / deseleccionar todas */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-green-400">
-                    {conteo} de {SECCIONES.length} sección{conteo !== 1 ? 'es' : ''} seleccionada{conteo !== 1 ? 's' : ''}
+                    {conteo} de {SECCIONES.length} seccion{conteo !== 1 ? 'es' : ''} seleccionada{conteo !== 1 ? 's' : ''}
                   </span>
                   <button
                     onClick={seleccionarTodas}
@@ -476,6 +480,7 @@ export default function DescargarDatos({ open, onClose }) {
                 <div className="space-y-2">
                   {SECCIONES.map((sec) => {
                     const activo = seleccion[sec.id];
+                    const IconoSeccion = ICONOS_SECCION[sec.icon] ?? ClipboardList;
                     return (
                       <label
                         key={sec.id}
@@ -494,7 +499,7 @@ export default function DescargarDatos({ open, onClose }) {
                           ${activo ? 'bg-green-500 border-green-500' : 'border-gray-600'}`}>
                           {activo && <Check size={12} className="text-white" strokeWidth={3} />}
                         </div>
-                        <span className="text-lg">{sec.icon}</span>
+                        <IconoSeccion size={18} className={activo ? 'text-green-400' : 'text-gray-500'} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-200">{sec.label}</p>
                           <p className="text-xs text-gray-500 mt-0.5">{sec.desc}</p>
@@ -524,7 +529,7 @@ export default function DescargarDatos({ open, onClose }) {
                   <Lock size={13} className="text-green-500 shrink-0 mt-0.5" />
                   <span>
                     El PDF se genera <span className="text-gray-300 font-medium">localmente en tu dispositivo</span>.
-                    Ningún dato es enviado a servidores externos.
+                    Ningun dato es enviado a servidores externos.
                   </span>
                 </div>
               </>
@@ -552,7 +557,7 @@ export default function DescargarDatos({ open, onClose }) {
                 ) : listo ? (
                   <>
                     <Check size={15} />
-                    ¡PDF descargado!
+                    PDF descargado
                   </>
                 ) : (
                   <>

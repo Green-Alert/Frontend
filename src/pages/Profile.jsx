@@ -14,12 +14,15 @@ import { getPerfil, updatePerfil, updateAvatar, changePassword, getMisReportes }
 import AvatarCropperModal from '../components/AvatarCropperModal';
 import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
 import { helpers } from '../constants/categorias';
+import { canManageCitizenReport, getEstadoSeguimientoReporte } from '../utils/reporteEstado';
+import { getValidIaAnalysis } from '../utils/reporteIA';
 
-const rolLabel = { ciudadano: 'Ciudadano', moderador: 'Moderador', admin: 'Administrador' };
+const rolLabel = { ciudadano: 'Ciudadano', moderador: 'Moderador', admin: 'Administrador', entidad: 'Entidad' };
 const rolColor  = {
   ciudadano:  'bg-green-500/15 text-green-400 border-green-500/30',
   moderador:  'bg-blue-500/15  text-blue-400  border-blue-500/30',
   admin:      'bg-purple-500/15 text-purple-400 border-purple-500/30',
+  entidad:    'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
 };
 
 const formatDate = (iso) =>
@@ -115,8 +118,6 @@ function PwField({ label, value, onChange, show, onToggleShow, error, placeholde
 // ── Stepper de estado de reporte ─────────────────────────────────────────────
 const ESTADO_STEPS = [
   { key: 'pendiente',   label: 'Enviado'    },
-  { key: 'en_revision', label: 'Revisión'   },
-  { key: 'verificado',  label: 'Verificado' },
   { key: 'en_proceso',  label: 'En proceso' },
   { key: 'resuelto',    label: 'Resuelto'   },
 ];
@@ -159,11 +160,12 @@ function ReporteStepper({ estado }) {
     );
   }
   const activeIdx = ESTADO_STEPS.findIndex((s) => s.key === estado);
+  const safeActiveIdx = activeIdx >= 0 ? activeIdx : 0;
   return (
     <div className="flex items-center gap-0" title={`Estado: ${ESTADO_STEPS[activeIdx]?.label ?? estado}`}>
       {ESTADO_STEPS.map((step, i) => {
-        const isDone    = i < activeIdx;
-        const isActive  = i === activeIdx;
+        const isDone    = i < safeActiveIdx;
+        const isActive  = i === safeActiveIdx;
         return (
           <div key={step.key} className="flex items-center gap-0 flex-1 last:flex-none">
             <div className="flex flex-col items-center gap-0.5" title={step.label}>
@@ -187,9 +189,9 @@ function ReporteStepper({ estado }) {
         );
       })}
       {/* En mobile: muestra solo el label del paso activo */}
-      {activeIdx >= 0 && (
+      {safeActiveIdx >= 0 && (
         <span className="sm:hidden ml-2 text-[10px] text-green-400 font-medium whitespace-nowrap">
-          {ESTADO_STEPS[activeIdx].label}
+          {ESTADO_STEPS[safeActiveIdx].label}
         </span>
       )}
     </div>
@@ -204,7 +206,7 @@ const NAV = [
 ];
 
 export default function Profile() {
-  const { user }       = useAuth();
+  const { user, refreshUser } = useAuth();
   const { showToast }  = useToast();
   const [section, setSection] = useState('perfil');
 
@@ -259,6 +261,7 @@ export default function Profile() {
     try {
       const { data } = await updateAvatar(formData);
       setPerfil(data.data.user);
+      await refreshUser(); // sincroniza el avatar en el Navbar y contexto global
       setCropperSrc(null);
       showToast('Foto de perfil actualizada.', 'success');
     } catch (err) {
@@ -767,8 +770,6 @@ export default function Profile() {
                   >
                     <option value="">Todos los estados</option>
                     <option value="pendiente">Enviado</option>
-                    <option value="en_revision">En revisión</option>
-                    <option value="verificado">Verificado</option>
                     <option value="en_proceso">En proceso</option>
                     <option value="resuelto">Resuelto</option>
                     <option value="rechazado">Rechazado</option>
@@ -822,7 +823,9 @@ export default function Profile() {
                     {misReportes.map((r, idx) => {
                       const cfg          = helpers.obtenerConfig(r.tipo_contaminacion);
                       const sevCfg       = SEVERITY_CFG[r.nivel_severidad] ?? SEVERITY_CFG.bajo;
-                      const puedeGestionar = r.estado === 'pendiente' || r.estado === 'en_revision';
+                      const estadoSeguimiento = getEstadoSeguimientoReporte(r);
+                      const puedeGestionar = canManageCitizenReport(r);
+                      const iaAnalysis = getValidIaAnalysis(r);
                       const accentColor  = cfg?.color ?? '#22c55e';
                       return (
                         <motion.div
@@ -856,9 +859,9 @@ export default function Profile() {
                                   <span className={`badge border text-[11px] font-medium ${sevCfg.bg} ${sevCfg.text} ${sevCfg.border}`}>
                                     {sevCfg.label}
                                   </span>
-                                  {r.ia_procesado && (
+                                  {iaAnalysis && (
                                     <span
-                                      title="Categoría sugerida por IA"
+                                      title={`Analisis IA con ${Math.round(iaAnalysis.confianza)}% de confianza`}
                                       className="badge border text-[10px] font-bold tracking-wider bg-purple-500/15 text-purple-300 border-purple-500/40 inline-flex items-center gap-1"
                                     >
                                       <Sparkles size={10} /> IA
@@ -921,7 +924,7 @@ export default function Profile() {
                             <div className="flex items-center gap-3 py-2.5 border-t border-gray-800/60 -mx-4 px-4">
                               {/* Stepper (se estira) */}
                               <div className="flex-1 min-w-0 overflow-hidden">
-                                <ReporteStepper estado={r.estado} />
+                                <ReporteStepper estado={estadoSeguimiento} />
                               </div>
 
                               {/* Acciones — únicamente "Ver detalle". La edición y eliminación viven en la página del reporte. */}
