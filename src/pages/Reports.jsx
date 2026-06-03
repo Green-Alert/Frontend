@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Droplets, Trees, Flame, Wind, Trash2, Leaf, Search, Lightbulb,
