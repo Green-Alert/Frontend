@@ -94,6 +94,15 @@
   will-change: transform;
 }
 
+@keyframes ga-loading-slide {
+  0%   { transform: translateX(-110%); }
+  100% { transform: translateX(310%); }
+}
+.ga-loading-bar {
+  animation: ga-loading-slide 1.15s ease-in-out infinite;
+  will-change: transform;
+}
+
 /* prefers-reduced-motion: desactiva todas las animaciones/transiciones */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

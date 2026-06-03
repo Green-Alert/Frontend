@@ -8,20 +8,12 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { getReportes } from '../services/api';
 import { helpers } from '../constants/categorias';
-
-const statusClass = {
-  pendiente:   'bg-gray-500/15 text-gray-400 border border-gray-500/30',
-  en_revision: 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30',
-  verificado:  'bg-blue-500/15 text-blue-400 border border-blue-500/30',
-  en_proceso:  'bg-orange-500/15 text-orange-400 border border-orange-500/30',
-  resuelto:    'bg-green-500/15 text-green-400 border border-green-500/30',
-  rechazado:   'bg-red-500/15 text-red-400 border border-red-500/30',
-};
-
-const statusLabel = {
-  pendiente: 'Pendiente', en_revision: 'En revisión', verificado: 'Verificado',
-  en_proceso: 'En proceso', resuelto: 'Resuelto', rechazado: 'Rechazado',
-};
+import {
+  ESTADO_REPORTE_BADGE_CLASS,
+  ESTADO_REPORTE_DOT_CLASS,
+  ESTADO_SEGUIMIENTO_LABEL,
+  getEstadoSeguimientoReporte,
+} from '../utils/reporteEstado';
 
 const severityClass = {
   bajo:    'bg-green-500/15 text-green-400 border border-green-500/30',
@@ -50,7 +42,7 @@ const TYPES_RIESGO        = ['deforestacion', 'incendios_forestales', 'deslizami
 const TYPES_CONTAMINACION = ['agua', 'aire', 'suelo', 'ruido', 'residuos', 'luminica'];
 const ALL_TYPES           = [...TYPES_RIESGO, ...TYPES_CONTAMINACION, 'otro'];
 
-const STATUSES   = ['Todos', 'pendiente', 'en_revision', 'verificado', 'en_proceso', 'resuelto', 'rechazado'];
+const STATUSES   = ['Todos', 'pendiente', 'en_proceso', 'resuelto', 'rechazado'];
 const SEVERITIES = ['Todos', 'bajo', 'medio', 'alto', 'critico'];
 
 const GRUPOS = [
@@ -267,13 +259,15 @@ export default function Reports() {
   });
 
   const statsPills = [
-    { key: 'pendiente',   label: 'Pendientes',   color: 'text-gray-400',   dot: 'bg-gray-400'   },
-    { key: 'en_revision', label: 'En revisión',  color: 'text-yellow-400', dot: 'bg-yellow-400' },
-    { key: 'verificado',  label: 'Verificados',  color: 'text-blue-400',   dot: 'bg-blue-400'   },
-    { key: 'en_proceso',  label: 'En proceso',   color: 'text-orange-400', dot: 'bg-orange-400' },
-    { key: 'resuelto',    label: 'Resueltos',    color: 'text-green-400',  dot: 'bg-green-400'  },
-    { key: 'rechazado',   label: 'Rechazados',   color: 'text-red-400',    dot: 'bg-red-400'    },
-  ].map((p) => ({ ...p, count: filtered.filter((r) => r.estado === p.key).length }))
+    { key: 'pendiente',   label: 'Pendientes', color: 'text-gray-400' },
+    { key: 'en_proceso',  label: 'En proceso', color: 'text-orange-400' },
+    { key: 'resuelto',    label: 'Resueltos', color: 'text-green-400' },
+    { key: 'rechazado',   label: 'Rechazados', color: 'text-red-400' },
+  ].map((p) => ({
+    ...p,
+    dot: ESTADO_REPORTE_DOT_CLASS[p.key],
+    count: filtered.filter((r) => getEstadoSeguimientoReporte(r) === p.key).length,
+  }))
    .filter((p) => p.count > 0);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
@@ -326,7 +320,7 @@ export default function Reports() {
     search         && { key: 'search',   label: `"${search}"`,                        clear: () => setSearch('') },
     groupFilter    !== 'Todos' && { key: 'group',    label: GRUPOS.find(g => g.value === groupFilter)?.label ?? groupFilter, clear: () => setGroupFilter('Todos') },
     typeFilter     !== 'Todos' && { key: 'type',     label: getTypeLabel(typeFilter),  clear: () => setTypeFilter('Todos') },
-    statusFilter   !== 'Todos' && { key: 'status',   label: statusLabel[statusFilter] ?? statusFilter, clear: () => setStatusFilter('Todos') },
+    statusFilter   !== 'Todos' && { key: 'status',   label: ESTADO_SEGUIMIENTO_LABEL[statusFilter] ?? statusFilter, clear: () => setStatusFilter('Todos') },
     severityFilter !== 'Todos' && { key: 'severity', label: severityLabel[severityFilter] ?? severityFilter, clear: () => setSeverityFilter('Todos') },
   ].filter(Boolean);
 
@@ -414,7 +408,7 @@ export default function Reports() {
               {typesForGroup(groupFilter).map((t) => <option key={t} value={t}>{getTypeLabel(t)}</option>)}
             </select>
             <select className={selectCls} value={statusFilter}   onChange={(e) => setStatusFilter(e.target.value)}   disabled={loading}>
-              {STATUSES.map((s) => <option key={s} value={s}>{s === 'Todos' ? 'Todos los estados' : statusLabel[s]}</option>)}
+              {STATUSES.map((s) => <option key={s} value={s}>{s === 'Todos' ? 'Todos los estados' : ESTADO_SEGUIMIENTO_LABEL[s]}</option>)}
             </select>
             <select className={selectCls} value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value)} disabled={loading}>
               {SEVERITIES.map((s) => <option key={s} value={s}>{s === 'Todos' ? 'Toda severidad' : severityLabel[s]}</option>)}
@@ -605,7 +599,7 @@ export default function Reports() {
               : severityFilter !== 'Todos'
                 ? `No hay reportes con severidad "${severityLabel[severityFilter]}".`
                 : statusFilter !== 'Todos'
-                  ? `No hay reportes en estado "${statusLabel[statusFilter]}".`
+                  ? `No hay reportes en estado "${ESTADO_SEGUIMIENTO_LABEL[statusFilter]}".`
                   : 'No hay reportes que coincidan con los filtros aplicados.'}
           </p>
           <button
@@ -628,7 +622,8 @@ export default function Reports() {
                 const color        = getCategoryColor(r.tipo_contaminacion);
                 const lugar        = [r.municipio, r.departamento].filter(Boolean).join(', ') || r.direccion || '—';
                 const fecha        = r.created_at ? new Date(r.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
-                const sinConfirmar = r.estado === 'pendiente' || r.estado === 'en_revision';
+                const estadoSeguimiento = getEstadoSeguimientoReporte(r);
+                const sinConfirmar = estadoSeguimiento === 'pendiente';
                 const isCritico    = r.nivel_severidad === 'critico';
                 const isAlto       = r.nivel_severidad === 'alto';
 
@@ -718,7 +713,9 @@ export default function Reports() {
                       {/* Estado + fecha */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className={`badge ${statusClass[r.estado]}`}>{statusLabel[r.estado] ?? r.estado}</span>
+                          <span className={`badge ${ESTADO_REPORTE_BADGE_CLASS[estadoSeguimiento]}`}>
+                            {ESTADO_SEGUIMIENTO_LABEL[estadoSeguimiento]}
+                          </span>
                           {sinConfirmar && (
                             <span
                               className="badge bg-gray-700/50 text-gray-500 border border-gray-700/50 cursor-help text-[10px]"
@@ -757,7 +754,8 @@ export default function Reports() {
                 const Icon         = typeIcons[r.tipo_contaminacion] ?? Leaf;
                 const color        = getCategoryColor(r.tipo_contaminacion);
                 const lugar        = [r.municipio, r.departamento].filter(Boolean).join(', ') || r.direccion || '—';
-                const sinConfirmar = r.estado === 'pendiente' || r.estado === 'en_revision';
+                const estadoSeguimiento = getEstadoSeguimientoReporte(r);
+                const sinConfirmar = estadoSeguimiento === 'pendiente';
                 const isCritico    = r.nivel_severidad === 'critico';
                 return (
                   <motion.div
@@ -814,7 +812,9 @@ export default function Reports() {
 
                     {/* Columna 5 — Estado + icono confirmación (116 px fijo, alineado a la derecha) */}
                     <div className="flex items-center justify-end gap-1.5 w-[116px] shrink-0">
-                      <span className={`badge ${statusClass[r.estado]}`}>{statusLabel[r.estado] ?? r.estado}</span>
+                      <span className={`badge ${ESTADO_REPORTE_BADGE_CLASS[estadoSeguimiento]}`}>
+                        {ESTADO_SEGUIMIENTO_LABEL[estadoSeguimiento]}
+                      </span>
                       {sinConfirmar && (
                         <AlertCircle
                           size={13}

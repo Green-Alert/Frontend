@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Brain, Sparkles, TrendingUp, Gauge } from 'lucide-react';
+import { Brain, Sparkles, TrendingUp, Gauge, ChevronDown } from 'lucide-react';
 import BarChart from '../charts/BarChart.jsx';
 import LineChart from '../charts/LineChart.jsx';
 import { getStatsIA } from '../../services/api';
@@ -43,9 +43,10 @@ const EmptyIA = () => (
 );
 
 export default function TendenciasIACard() {
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(false);
+  const [data, setData]         = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -110,51 +111,68 @@ export default function TendenciasIACard() {
 
   return (
     <div className="card p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <Brain size={16} className="text-violet-400" />
-        <h2 className="font-semibold text-white">Tendencias IA</h2>
-        <span className="text-[11px] text-gray-500 ml-1">· últimos 30 días</span>
+      {/* ── Header siempre visible ── */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 group"
+      >
+        <div className="flex items-center gap-2">
+          <Brain size={16} className="text-violet-400" />
+          <h2 className="font-semibold text-white">Tendencias IA</h2>
+          <span className="text-[11px] text-gray-500 ml-1">· últimos 30 días</span>
+        </div>
+        <ChevronDown
+          size={16}
+          className={`text-gray-500 group-hover:text-gray-300 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {/* ── KPIs compactos — siempre visibles ── */}
+      <div className="grid grid-cols-3 gap-3 mt-4">
+        <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 flex items-center gap-3">
+          <Sparkles size={14} className="text-violet-400 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 truncate">Procesados</p>
+            <p className="text-lg font-bold text-white tabular-nums">{total_procesados}</p>
+          </div>
+        </div>
+        <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 flex items-center gap-3">
+          <TrendingUp size={14} className="text-green-400 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 truncate">Aceptación</p>
+            <p className="text-lg font-bold text-white tabular-nums">{accuracy?.porcentaje ?? 0}%</p>
+          </div>
+        </div>
+        <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 flex items-center gap-3">
+          <Gauge size={14} className="text-amber-400 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 truncate">Confianza</p>
+            <p className="text-lg font-bold text-white tabular-nums">{confianza?.promedio ?? 0}%</p>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-        <KpiCard
-          icon={Sparkles}
-          label="Procesados por IA"
-          value={total_procesados}
-          hint="Reportes con clasificación automática"
-        />
-        <KpiCard
-          icon={TrendingUp}
-          label="Aceptación"
-          value={`${accuracy?.porcentaje ?? 0}%`}
-          hint={`${accuracy?.aceptadas ?? 0} aceptadas · ${accuracy?.modificadas ?? 0} modificadas`}
-          color="text-green-400"
-        />
-        <KpiCard
-          icon={Gauge}
-          label="Confianza promedio"
-          value={`${confianza?.promedio ?? 0}%`}
-          hint="Score top-1 entregado por el modelo"
-          color="text-amber-400"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
-        <Section title="Top etiquetas detectadas" hint="Etiqueta principal sugerida por la IA">
-          <BarChart data={topData} maxBars={6} />
-        </Section>
-        <Section title="Distribución de confianza" hint="Por nivel del score top-1">
-          <BarChart data={confData} maxBars={3} />
-        </Section>
-      </div>
-
-      <Section title="Procesados por día (30 d)" hint="Volumen de reportes pasados por la IA">
-        {tlData.length > 0 ? (
-          <LineChart data={tlData} bucket="month" color="#a78bfa" />
-        ) : (
-          <p className="text-sm text-gray-500 py-6 text-center">Sin datos en este rango.</p>
-        )}
-      </Section>
+      {/* ── Detalle expandible ── */}
+      {expanded && (
+        <div className="mt-4 space-y-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <Section title="Top etiquetas detectadas" hint="Etiqueta principal sugerida por la IA">
+              <BarChart data={topData} maxBars={6} />
+            </Section>
+            <Section title="Distribución de confianza" hint="Por nivel del score top-1">
+              <BarChart data={confData} maxBars={3} />
+            </Section>
+          </div>
+          <Section title="Procesados por día (30 d)" hint="Volumen de reportes pasados por la IA">
+            {tlData.length > 0 ? (
+              <LineChart data={tlData} bucket="month" color="#a78bfa" />
+            ) : (
+              <p className="text-sm text-gray-500 py-4 text-center">Sin datos en este rango.</p>
+            )}
+          </Section>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,12 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { loginUser, registerUser, getPerfil, oauthGoogle, oauthFacebook } from '../services/api';
+import {
+  exchangeOAuthCallbackCode,
+  getPerfil,
+  loginUser,
+  oauthFacebook,
+  oauthGoogle,
+  registerUser,
+} from '../services/api';
 import { useToast } from './ToastContext';
 
 const AuthContext = createContext(null);
@@ -71,6 +78,12 @@ export function AuthProvider({ children }) {
     return _saveSession(token, userData);
   };
 
+  const completeOAuthCallback = async (code) => {
+    const res = await exchangeOAuthCallbackCode(code);
+    const { token, accessToken, user: userData } = res.data.data;
+    return _saveSession(token || accessToken, userData);
+  };
+
   const logout = () => {
     localStorage.removeItem('ga_token');
     localStorage.removeItem('ga_user');
@@ -79,7 +92,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, loginWithGoogle, loginWithFacebook }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, loginWithGoogle, loginWithFacebook, completeOAuthCallback }}>
       {children}
     </AuthContext.Provider>
   );

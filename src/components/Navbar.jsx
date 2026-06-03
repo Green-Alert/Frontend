@@ -11,13 +11,14 @@ const navItems = [
   { to: '/',           label: 'Inicio',          end: true,  guestOnly: true, scrollToTop: true },
   { to: '/dashboard',  label: 'Página Principal', authOnly: true },
   { to: '/reports',    label: 'Reportes',         authOnly: true },
+  { to: '/entidad',    label: 'Mi Entidad',       roles: ['entidad'] },
   { to: '/moderacion', label: 'Moderación',       roles: ['moderador', 'admin'] },
   { to: '/admin',      label: 'Administración',   roles: ['admin'] },
   { to: '/#nosotros',  label: 'Acerca de',        hash: true, guestOnly: true },
 ];
 
-const rolLabel = { ciudadano: 'Ciudadano', moderador: 'Moderador', admin: 'Administrador' };
-const rolColor = { ciudadano: 'text-green-400', moderador: 'text-blue-400', admin: 'text-yellow-400' };
+const rolLabel = { ciudadano: 'Ciudadano', moderador: 'Moderador', admin: 'Administrador', entidad: 'Entidad' };
+const rolColor = { ciudadano: 'text-green-400', moderador: 'text-blue-400', admin: 'text-yellow-400', entidad: 'text-emerald-300' };
 
 function filterNavItems(items, user) {
   return items.filter((item) => {
@@ -35,7 +36,7 @@ export default function Navbar() {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const showNewReport = location.pathname !== '/reports';
+  const showNewReport = location.pathname !== '/reports' && user?.rol !== 'entidad';
 
   // FE-27 · alertas predictivas en la zona del usuario (in-app, toast + badge)
   const alertasZonaEnabled = user
@@ -90,7 +91,7 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 bg-gray-950/90 backdrop-blur border-b border-gray-800">
-      <nav className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+      <nav className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 h-14 flex items-center justify-between">
         {/* Logo */}
         <Link
           to="/"
@@ -144,7 +145,7 @@ export default function Navbar() {
                   onClick={() => setUserMenuOpen((v) => !v)}
                   className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-lg border border-gray-700 bg-gray-900 hover:border-gray-600 transition"
                 >
-                  <span className="w-6 h-6 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center text-green-400 text-xs font-bold overflow-hidden shrink-0">
+                  <span className="w-8 h-8 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center text-green-400 text-xs font-bold overflow-hidden shrink-0">
                     {user.avatar_url
                       ? <img src={user.avatar_url} alt={user.nombre} className="w-full h-full object-cover" />
                       : user.nombre?.charAt(0).toUpperCase()
@@ -189,6 +190,18 @@ export default function Navbar() {
                           className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-blue-300 hover:bg-gray-800 transition-colors"
                         >
                           <ShieldCheck size={15} className="text-blue-400" /> Moderación
+                        </Link>
+                      </>
+                    )}
+                    {user.rol === 'entidad' && (
+                      <>
+                        <div className="border-t border-gray-800 my-1" />
+                        <Link
+                          to="/entidad"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-emerald-300 hover:bg-gray-800 transition-colors"
+                        >
+                          <ShieldCheck size={15} className="text-emerald-400" /> Panel Entidad
                         </Link>
                       </>
                     )}

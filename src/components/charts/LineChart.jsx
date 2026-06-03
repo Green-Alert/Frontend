@@ -17,17 +17,31 @@ export default function LineChart({ data = [], bucket = 'week', color = '#22c55e
   const [hover, setHover] = useState(null);
 
   const { points, max, areaPath, linePath } = useMemo(() => {
-    if (!data.length) return { points: [], max: 0, areaPath: '', linePath: '' };
-    const max = Math.max(...data.map(d => Number(d.total) || 0), 1);
+    const normalizedData = data
+      .map((item, index) => {
+         const total = Number(item?.total ?? item?.total_reportes ?? item?.value ?? item?.count ?? 0);
+        return {
+          ...item,
+          periodo: item?.periodo ?? item?.label ?? String(index + 1),
+          total: Number.isFinite(total) ? total : 0,
+        };
+      })
+      .filter((item) => item.periodo && item.total >= 0);
+
+    if (!normalizedData.length) return { points: [], max: 0, areaPath: '', linePath: '' };
+
+    const max = Math.max(...normalizedData.map(d => d.total), 1);
     const innerW = W - PAD.left - PAD.right;
     const innerH = H - PAD.top - PAD.bottom;
-    const stepX = data.length === 1 ? 0 : innerW / (data.length - 1);
+    const stepX = normalizedData.length === 1 ? 0 : innerW / (normalizedData.length - 1);
 
-    const points = data.map((d, i) => {
+    const points = normalizedData.map((d, i) => {
       const x = PAD.left + stepX * i;
-      const y = PAD.top + innerH - (Number(d.total) / max) * innerH;
+      const y = PAD.top + innerH - (d.total / max) * innerH;
       return { x, y, ...d };
-    });
+    }).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+
+    if (!points.length) return { points: [], max: 0, areaPath: '', linePath: '' };
 
     const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
     const areaPath = `${linePath} L ${points.at(-1).x} ${PAD.top + innerH} L ${points[0].x} ${PAD.top + innerH} Z`;
@@ -36,7 +50,7 @@ export default function LineChart({ data = [], bucket = 'week', color = '#22c55e
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  if (!data.length) {
+  if (!points.length) {
     return (
       <div className="flex-1 flex items-center justify-center py-10 text-sm text-gray-600">
         Sin datos para el rango seleccionado
@@ -45,7 +59,7 @@ export default function LineChart({ data = [], bucket = 'week', color = '#22c55e
   }
 
   // Etiquetas X: si hay > 8, mostramos solo cada N para evitar solapamiento
-  const stepLabel = Math.ceil(data.length / 8);
+  const stepLabel = Math.max(1, Math.ceil(points.length / 8));
 
   // Formatea el label del eje X según bucket
   const fmtLabel = (periodo) => {
