@@ -390,7 +390,7 @@ export default function Profile() {
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loadingData) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20 text-center text-gray-500">
+      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-20 text-center text-gray-500">
         <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
         <p className="text-sm">Cargando perfil...</p>
       </div>
@@ -401,7 +401,7 @@ export default function Profile() {
   const initial     = perfil?.nombre?.charAt(0).toUpperCase() ?? '?';
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10">
 
       {/* ── Hero card ──────────────────────────────────────────────────────── */}
       <div className="card mb-8 p-6 sm:p-8">

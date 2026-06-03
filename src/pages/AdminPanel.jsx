@@ -22,7 +22,7 @@ export default function AdminPanel() {
   }, []);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 space-y-8">
 
       {/* Encabezado */}
       <div className="flex items-start sm:items-center justify-between flex-wrap gap-4">

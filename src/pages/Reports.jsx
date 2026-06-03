@@ -336,7 +336,7 @@ export default function Reports() {
   const selectCls = 'bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-300 focus:outline-none focus:border-green-500 transition-colors disabled:opacity-40';
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-6">
+    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 space-y-6">
 
       {/* ── HEADER ── */}
       <motion.div

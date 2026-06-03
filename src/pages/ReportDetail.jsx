@@ -233,7 +233,7 @@ export default function ReportDetail() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-20 text-center text-gray-500">
+      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-20 text-center text-gray-500">
         <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
         <p className="text-sm">Cargando reporte...</p>
       </div>
@@ -242,7 +242,7 @@ export default function ReportDetail() {
 
   if (error || !report) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-20 text-center">
+      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-20 text-center">
         <p className="text-red-400 mb-4">{error || 'Reporte no encontrado.'}</p>
         <button onClick={() => navigate('/reports')} className="btn-secondary text-sm">
           Volver a Reportes
@@ -343,7 +343,7 @@ export default function ReportDetail() {
 
   return (
     <motion.div
-      className="max-w-4xl mx-auto px-4 sm:px-6 py-10"
+      className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: 'easeOut' }}

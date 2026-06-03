@@ -53,7 +53,7 @@ export default function Trending() {
 
   return (
     <motion.section
-      className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10"
+      className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: 'easeOut' }}

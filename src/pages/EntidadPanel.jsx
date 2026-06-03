@@ -501,7 +501,7 @@ export default function EntidadPanel() {
   const totalPages = Math.max(1, Math.ceil(reportesMeta.total / pageSize));
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10">
       <section className="mb-6 overflow-hidden rounded-2xl border border-gray-800 bg-gray-950">
         <div className="border-b border-gray-800 bg-gradient-to-r from-gray-900 via-gray-900 to-emerald-950/30 px-5 py-6 sm:px-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
