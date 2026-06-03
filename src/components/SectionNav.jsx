@@ -41,25 +41,9 @@ export default function SectionNav() {
   };
 
   return (
-    <div className="fixed right-5 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col items-center gap-3">
+    <div className="fixed left-5 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col items-center gap-3">
       {SECTIONS.map(({ id, label }) => (
         <div key={id} className="relative flex items-center">
-          {/* Tooltip label */}
-          <AnimatePresence>
-            {hovered === id && (
-              <motion.span
-                key="tip"
-                initial={{ opacity: 0, x: 6 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 6 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-6 whitespace-nowrap text-[11px] text-gray-300 bg-gray-900/90 border border-gray-700/60 px-2 py-0.5 rounded-md pointer-events-none"
-              >
-                {label}
-              </motion.span>
-            )}
-          </AnimatePresence>
-
           {/* Dot */}
           <button
             onClick={() => scrollTo(id)}
@@ -79,6 +63,22 @@ export default function SectionNav() {
               style={active === id ? { boxShadow: '0 0 6px rgba(74,222,128,0.45)' } : {}}
             />
           </button>
+
+          {/* Tooltip label — aparece a la derecha del dot */}
+          <AnimatePresence>
+            {hovered === id && (
+              <motion.span
+                key="tip"
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -6 }}
+                transition={{ duration: 0.15 }}
+                className="absolute left-6 whitespace-nowrap text-[11px] text-gray-300 bg-gray-900/90 border border-gray-700/60 px-2 py-0.5 rounded-md pointer-events-none"
+              >
+                {label}
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
       ))}
     </div>
