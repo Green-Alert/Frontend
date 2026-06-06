@@ -193,88 +193,142 @@ export default function Home() {
   return (
     <div className="flex flex-col">
 
+      {/* ── Fondo nebulosa global — fixed para que persista en todos los sections ── */}
+      <div className="fixed inset-0 -z-20 pointer-events-none overflow-hidden">
+        {/* Masa central principal — sube desde abajo y cruza todo el viewport */}
+        <div className="absolute rounded-full" style={{
+          left: 'calc(50% - 440px)', bottom: '-15%',
+          width: '880px', height: '680px',
+          background: 'radial-gradient(ellipse at center, rgba(34,197,94,0.20) 0%, rgba(16,185,129,0.08) 52%, transparent 72%)',
+          filter: 'blur(80px)',
+          animation: 'lava-rise-1 22s ease-in-out infinite',
+          willChange: 'transform',
+        }} />
+        {/* Blob izquierda */}
+        <div className="absolute rounded-full" style={{
+          left: '-10%', bottom: '-20%',
+          width: '620px', height: '520px',
+          background: 'radial-gradient(ellipse at center, rgba(16,185,129,0.16) 0%, transparent 74%)',
+          filter: 'blur(72px)',
+          animation: 'lava-rise-2 28s ease-in-out infinite',
+          animationDelay: '-9s',
+          willChange: 'transform',
+        }} />
+        {/* Blob derecha */}
+        <div className="absolute rounded-full" style={{
+          right: '-8%', bottom: '-18%',
+          width: '560px', height: '460px',
+          background: 'radial-gradient(ellipse at center, rgba(20,184,166,0.14) 0%, transparent 74%)',
+          filter: 'blur(68px)',
+          animation: 'lava-rise-3 24s ease-in-out infinite',
+          animationDelay: '-16s',
+          willChange: 'transform',
+        }} />
+        {/* Núcleo brillante central */}
+        <div className="absolute rounded-full" style={{
+          left: 'calc(50% - 160px)', bottom: '-5%',
+          width: '320px', height: '260px',
+          background: 'radial-gradient(ellipse at center, rgba(74,222,128,0.22) 0%, transparent 68%)',
+          filter: 'blur(42px)',
+          animation: 'lava-rise-1 16s ease-in-out infinite',
+          animationDelay: '-5s',
+          willChange: 'transform',
+        }} />
+        {/* Blob secundario izquierda — desfasado para cobertura continua */}
+        <div className="absolute rounded-full" style={{
+          left: '18%', bottom: '-12%',
+          width: '420px', height: '360px',
+          background: 'radial-gradient(ellipse at center, rgba(34,197,94,0.12) 0%, transparent 72%)',
+          filter: 'blur(60px)',
+          animation: 'lava-rise-2 20s ease-in-out infinite',
+          animationDelay: '-4s',
+          willChange: 'transform',
+        }} />
+        {/* Blob secundario derecha */}
+        <div className="absolute rounded-full" style={{
+          right: '14%', bottom: '-10%',
+          width: '380px', height: '320px',
+          background: 'radial-gradient(ellipse at center, rgba(16,185,129,0.11) 0%, transparent 72%)',
+          filter: 'blur(56px)',
+          animation: 'lava-rise-3 26s ease-in-out infinite',
+          animationDelay: '-13s',
+          willChange: 'transform',
+        }} />
+        {/* ── Blobs ambientales fijos — siempre visibles, sin desplazamiento ── */}
+        {/* Zona superior del viewport */}
+        <div className="absolute rounded-full" style={{
+          left: '20%', top: '8%',
+          width: '700px', height: '500px',
+          background: 'radial-gradient(ellipse at center, rgba(34,197,94,0.09) 0%, transparent 68%)',
+          filter: 'blur(90px)',
+          animation: 'lava-pulse 20s ease-in-out infinite',
+          animationDelay: '-7s',
+          willChange: 'transform',
+        }} />
+        {/* Zona inferior del viewport */}
+        <div className="absolute rounded-full" style={{
+          right: '15%', bottom: '15%',
+          width: '650px', height: '480px',
+          background: 'radial-gradient(ellipse at center, rgba(20,184,166,0.08) 0%, transparent 68%)',
+          filter: 'blur(88px)',
+          animation: 'lava-pulse 24s ease-in-out infinite',
+          animationDelay: '-13s',
+          willChange: 'transform',
+        }} />
+      </div>
+
       <SectionNav />
 
       {/* HERO */}
-      <section id="inicio" ref={heroRef} className="relative overflow-hidden pt-12 pb-24 sm:pt-16 sm:pb-32 lg:min-h-screen lg:flex lg:flex-col lg:justify-center px-4 sm:px-6 text-center">
+      <section id="inicio" ref={heroRef} className="relative pt-12 pb-24 sm:pt-16 sm:pb-32 lg:min-h-screen lg:flex lg:flex-col lg:justify-center px-4 sm:px-6 text-center">
+        {/* Capa de parallax mouse — blobs que siguen el cursor, sin animación CSS */}
         <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden">
-          {/* Grain texture */}
-          <svg className="absolute inset-0 w-full h-full opacity-[0.04] mix-blend-overlay" xmlns="http://www.w3.org/2000/svg">
-            <filter id="ga-grain">
-              <feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="3" stitchTiles="stitch" />
-              <feColorMatrix type="saturate" values="0" />
-            </filter>
-            <rect width="100%" height="100%" filter="url(#ga-grain)" />
-          </svg>
-
-          {/* Blob 1 — masa central principal, sube lento */}
           <div ref={orb1} className="absolute rounded-full" style={{
             left: 'calc(50% - 420px)', bottom: '-10%',
             width: '840px', height: '680px',
-            background: 'radial-gradient(ellipse at center, rgba(34,197,94,0.20) 0%, rgba(16,185,129,0.09) 50%, transparent 72%)',
+            background: 'radial-gradient(ellipse at center, rgba(34,197,94,0.10) 0%, rgba(16,185,129,0.04) 50%, transparent 72%)',
             filter: 'blur(70px)',
-            animation: 'lava-rise-1 18s ease-in-out infinite',
             willChange: 'transform',
           }} />
-
-          {/* Blob 2 — masa izquierda esmeralda, sube desplazada */}
           <div ref={orb2} className="absolute rounded-full" style={{
             left: '-8%', bottom: '-15%',
             width: '580px', height: '500px',
-            background: 'radial-gradient(ellipse at center, rgba(16,185,129,0.17) 0%, rgba(34,197,94,0.07) 58%, transparent 75%)',
+            background: 'radial-gradient(ellipse at center, rgba(16,185,129,0.08) 0%, transparent 75%)',
             filter: 'blur(60px)',
-            animation: 'lava-rise-2 23s ease-in-out infinite',
-            animationDelay: '-7s',
             willChange: 'transform',
           }} />
-
-          {/* Blob 3 — masa derecha teal */}
           <div ref={orb3} className="absolute rounded-full" style={{
             right: '-6%', bottom: '-12%',
             width: '520px', height: '460px',
-            background: 'radial-gradient(ellipse at center, rgba(20,184,166,0.15) 0%, rgba(34,197,94,0.06) 55%, transparent 74%)',
+            background: 'radial-gradient(ellipse at center, rgba(20,184,166,0.07) 0%, transparent 74%)',
             filter: 'blur(58px)',
-            animation: 'lava-rise-3 20s ease-in-out infinite',
-            animationDelay: '-12s',
             willChange: 'transform',
           }} />
-
-          {/* Blob 4 — núcleo pequeño central, el más brillante */}
           <div ref={orb4} className="absolute rounded-full" style={{
             left: 'calc(50% - 160px)', bottom: '-5%',
             width: '320px', height: '260px',
-            background: 'radial-gradient(ellipse at center, rgba(74,222,128,0.21) 0%, transparent 68%)',
+            background: 'radial-gradient(ellipse at center, rgba(74,222,128,0.11) 0%, transparent 68%)',
             filter: 'blur(36px)',
-            animation: 'lava-rise-1 14s ease-in-out infinite',
-            animationDelay: '-5s',
             willChange: 'transform',
           }} />
-
-          {/* Blob 5 — gota pequeña izquierda */}
           <div ref={orb5} className="absolute rounded-full" style={{
             left: '22%', bottom: '-8%',
             width: '220px', height: '200px',
-            background: 'radial-gradient(ellipse, rgba(34,197,94,0.17) 0%, transparent 72%)',
+            background: 'radial-gradient(ellipse, rgba(34,197,94,0.09) 0%, transparent 72%)',
             filter: 'blur(30px)',
-            animation: 'lava-rise-2 16s ease-in-out infinite',
-            animationDelay: '-3s',
             willChange: 'transform',
           }} />
-
-          {/* Blob 6 — gota pequeña derecha */}
           <div ref={orb6} className="absolute rounded-full" style={{
             right: '20%', bottom: '-6%',
             width: '190px', height: '170px',
-            background: 'radial-gradient(ellipse, rgba(20,184,166,0.15) 0%, transparent 72%)',
+            background: 'radial-gradient(ellipse, rgba(20,184,166,0.08) 0%, transparent 72%)',
             filter: 'blur(28px)',
-            animation: 'lava-rise-3 19s ease-in-out infinite',
-            animationDelay: '-9s',
             willChange: 'transform',
           }} />
         </div>
 
         <motion.div
-          className="max-w-3xl mx-auto"
+          className="max-w-6xl mx-auto"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.65, ease: 'easeOut' }}
@@ -300,7 +354,7 @@ export default function Home() {
           </h1>
 
           <motion.p
-            className="mt-7 text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed"
+            className="mt-7 text-lg sm:text-xl text-gray-400 leading-relaxed"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.35, duration: 0.5 }}
@@ -369,8 +423,8 @@ export default function Home() {
       </section>
 
       {/* EL CONTEXTO — el problema que existe */}
-      <section id="contexto" className="py-20 lg:min-h-screen lg:flex lg:flex-col lg:justify-center px-4 sm:px-6 border-t border-gray-800/40 bg-gray-950/60">
-        <div className="max-w-4xl mx-auto">
+      <section id="contexto" className="py-20 lg:min-h-screen lg:flex lg:flex-col lg:justify-center px-4 sm:px-6 lg:px-10">
+        <div className="w-full max-w-[1600px] mx-auto">
           <Reveal className="text-center mb-12">
             <span className="inline-block text-xs font-semibold tracking-widest uppercase text-amber-500/80 mb-3">El contexto</span>
             <h2 className="text-3xl sm:text-4xl font-bold text-white leading-snug">
@@ -382,15 +436,17 @@ export default function Home() {
           <div className="grid sm:grid-cols-3 gap-5">
             {PROBLEM_ITEMS.map(({ icon: Icon, text, color, accent }, i) => (
               <Reveal key={i} delay={i * 0.1}>
-                <div
-                  className="flex flex-col gap-4 p-5 rounded-xl border border-gray-800/60 bg-gray-900/50 h-full"
+                <motion.div
+                  className="flex flex-col gap-4 p-5 rounded-xl border border-gray-800/60 bg-gray-900/50 h-full cursor-default"
                   style={{ borderLeft: `3px solid ${accent}55` }}
+                  whileHover={{ y: -4, boxShadow: `0 14px 36px ${accent}22` }}
+                  transition={{ duration: 0.2 }}
                 >
                   <div className="w-9 h-9 rounded-lg bg-gray-800/80 flex items-center justify-center shrink-0">
                     <Icon className={`w-4 h-4 ${color}`} />
                   </div>
                   <p className="text-sm text-gray-300 leading-relaxed">{text}</p>
-                </div>
+                </motion.div>
               </Reveal>
             ))}
           </div>
@@ -411,8 +467,8 @@ export default function Home() {
       </section>
 
       {/* IMPACTO — evidencia en números */}
-      <section id="impacto" className="py-20 lg:min-h-screen lg:flex lg:flex-col lg:justify-center px-4 sm:px-6 border-t border-gray-800/40">
-        <div className="max-w-5xl mx-auto">
+      <section id="impacto" className="py-20 lg:min-h-screen lg:flex lg:flex-col lg:justify-center px-4 sm:px-6 lg:px-10">
+        <div className="w-full max-w-[1600px] mx-auto">
           <Reveal className="text-center mb-12">
             <span className="inline-block text-xs font-semibold tracking-widest uppercase text-green-500/60 mb-2">Por qué GreenAlert</span>
             <h2 className="text-3xl sm:text-4xl font-bold text-white">Diseñado para tener impacto real</h2>
@@ -436,8 +492,8 @@ export default function Home() {
 
       {/* STATS — solo se muestra cuando hay datos significativos */}
       {statsData && statsData.total_reportes >= 20 && (
-      <section className="py-14 px-4 sm:px-6 border-y border-gray-800 bg-gray-900/50">
-        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+      <section className="py-14 px-4 sm:px-6 lg:px-10">
+        <div className="w-full max-w-[1600px] mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {statsDisplay.map((s, i) => (
             <Reveal key={s.label} delay={i * 0.07}>
               <div className="text-4xl sm:text-5xl font-extrabold text-green-400 tabular-nums">
@@ -451,8 +507,8 @@ export default function Home() {
       )}
 
       {/* CAPACIDADES */}
-      <section id="capacidades" className="py-24 lg:min-h-screen lg:flex lg:flex-col lg:justify-center px-4 sm:px-6 border-t border-gray-800/60 bg-gray-900/30">
-        <div className="max-w-5xl mx-auto">
+      <section id="capacidades" className="py-24 lg:min-h-screen lg:flex lg:flex-col lg:justify-center px-4 sm:px-6 lg:px-10">
+        <div className="w-full max-w-[1600px] mx-auto">
           <Reveal className="text-center mb-14">
             <span className="inline-block text-xs font-semibold tracking-widest uppercase text-green-500/70 mb-3">Capacidades</span>
             <h2 className="text-3xl sm:text-4xl font-bold text-white">Todo lo que necesitas para reportar</h2>
@@ -482,8 +538,8 @@ export default function Home() {
       </section>
 
       {/* EL PROCESO */}
-      <section id="proceso" className="py-24 lg:min-h-screen lg:flex lg:flex-col lg:justify-center px-4 sm:px-6 border-t border-gray-800/60">
-        <div className="max-w-4xl mx-auto">
+      <section id="proceso" className="py-24 lg:min-h-screen lg:flex lg:flex-col lg:justify-center px-4 sm:px-6 lg:px-10">
+        <div className="w-full max-w-[1600px] mx-auto">
           <Reveal className="text-center mb-16">
             <span className="inline-block text-xs font-semibold tracking-widest uppercase text-green-500/70 mb-3">El proceso</span>
             <h2 className="text-3xl sm:text-4xl font-bold text-white">De la observación a la resolución</h2>
@@ -526,8 +582,8 @@ export default function Home() {
       </section>
 
       {/* SOBRE NOSOTROS — anchor: #nosotros */}
-      <section id="nosotros" className="py-24 lg:min-h-screen lg:flex lg:flex-col lg:justify-center px-4 sm:px-6 border-t border-gray-800/60 bg-gray-900/25">
-        <div className="max-w-5xl mx-auto">
+      <section id="nosotros" className="py-24 lg:min-h-screen lg:flex lg:flex-col lg:justify-center px-4 sm:px-6 lg:px-10">
+        <div className="w-full max-w-[1600px] mx-auto">
           <Reveal className="text-center mb-14">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-500/10 border border-green-500/25 text-green-400 text-sm font-medium mb-4">
               <Leaf className="w-4 h-4" />
@@ -543,7 +599,11 @@ export default function Home() {
           <div className="grid sm:grid-cols-3 gap-6">
             {MISSION_CARDS.map(({ icon: Icon, color, title, desc }, i) => (
               <Reveal key={title} delay={i * 0.1}>
-                <div className="card h-full flex flex-col gap-4">
+                <motion.div
+                  className="card h-full flex flex-col gap-4 cursor-default"
+                  whileHover={{ y: -4, boxShadow: `0 14px 36px ${color}22` }}
+                  transition={{ duration: 0.2 }}
+                >
                   <div
                     className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
                     style={{ backgroundColor: color + '18', border: `1.5px solid ${color}40` }}
@@ -554,7 +614,7 @@ export default function Home() {
                     <h3 className="font-semibold text-white mb-1.5">{title}</h3>
                     <p className="text-sm text-gray-400 leading-relaxed">{desc}</p>
                   </div>
-                </div>
+                </motion.div>
               </Reveal>
             ))}
           </div>
@@ -562,14 +622,8 @@ export default function Home() {
       </section>
 
       {/* CONTACTO — anchor: #contacto */}
-      <section id="contacto" className="relative py-24 lg:min-h-screen lg:flex lg:flex-col lg:justify-center px-4 sm:px-6 border-t border-gray-800/60 overflow-hidden">
-        {/* Fondo atmosférico */}
-        <div className="absolute inset-0 -z-10 pointer-events-none">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-500/25 to-transparent" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-green-500/4 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-0 w-[400px] h-[200px] bg-emerald-600/4 rounded-full blur-3xl" />
-        </div>
-
+      <section id="contacto" className="relative py-24 lg:min-h-screen lg:flex lg:flex-col lg:justify-center px-4 sm:px-6 lg:px-10 overflow-hidden">
+        <div className="w-full max-w-[1600px] mx-auto">
         <div className="max-w-2xl mx-auto text-center">
           <Reveal>
             {/* Ícono destacado */}
@@ -608,7 +662,11 @@ export default function Home() {
           {/* Info cards en fila */}
           <Reveal delay={0.15}>
             <div className="mt-14 pt-10 border-t border-gray-800/60 grid sm:grid-cols-3 gap-4">
-              <div className="flex flex-col items-center gap-3 p-5 rounded-xl bg-gray-900/50 border border-gray-800/60">
+              <motion.div
+                className="flex flex-col items-center gap-3 p-5 rounded-xl bg-gray-900/50 border border-gray-800/60 cursor-default"
+                whileHover={{ y: -4, boxShadow: '0 14px 36px rgba(34,197,94,0.14)' }}
+                transition={{ duration: 0.2 }}
+              >
                 <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
                   <Mail className="w-5 h-5 text-green-400" />
                 </div>
@@ -617,8 +675,12 @@ export default function Home() {
                   <p className="text-sm text-white font-medium break-all">greenalert.webcompany@gmail.com</p>
                   <p className="text-xs text-gray-600 mt-1">Respondemos en menos de 48 h</p>
                 </div>
-              </div>
-              <div className="flex flex-col items-center gap-3 p-5 rounded-xl bg-gray-900/50 border border-gray-800/60">
+              </motion.div>
+              <motion.div
+                className="flex flex-col items-center gap-3 p-5 rounded-xl bg-gray-900/50 border border-gray-800/60 cursor-default"
+                whileHover={{ y: -4, boxShadow: '0 14px 36px rgba(139,92,246,0.14)' }}
+                transition={{ duration: 0.2 }}
+              >
                 <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
                   <Github className="w-5 h-5 text-violet-400" />
                 </div>
@@ -627,8 +689,12 @@ export default function Home() {
                   <p className="text-sm text-white font-medium">github.com/Green-Alert</p>
                   <p className="text-xs text-gray-600 mt-1">Peticiones y discusiones abiertas</p>
                 </div>
-              </div>
-              <div className="flex flex-col items-center gap-3 p-5 rounded-xl bg-gray-900/50 border border-gray-800/60">
+              </motion.div>
+              <motion.div
+                className="flex flex-col items-center gap-3 p-5 rounded-xl bg-gray-900/50 border border-gray-800/60 cursor-default"
+                whileHover={{ y: -4, boxShadow: '0 14px 36px rgba(245,158,11,0.14)' }}
+                transition={{ duration: 0.2 }}
+              >
                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
                   <Leaf className="w-5 h-5 text-amber-400" />
                 </div>
@@ -637,7 +703,7 @@ export default function Home() {
                   <p className="text-sm text-white font-medium">MIT — Código abierto</p>
                   <p className="text-xs text-gray-600 mt-1">Libre para usar y modificar</p>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </Reveal>
 
@@ -654,6 +720,7 @@ export default function Home() {
               <span className="text-[10px] tracking-widest uppercase">Volver al inicio</span>
             </button>
           </div>
+        </div>
         </div>
       </section>
 

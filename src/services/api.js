@@ -121,7 +121,8 @@ export const sugerirContenidoReporte = (formData) =>
   });
 export const updateReporte  = (id, data)   => api.patch(`/reportes/${id}`, data);
 export const deleteReporte  = (id)         => api.delete(`/reportes/${id}`);
-export const exportReportes = (params)     => api.get('/reportes/export', { params });
+export const exportReportes = (params)     => api.get('/reportes/export', { params, responseType: 'arraybuffer' });
+
 export const asignarReporteEntidad = (id, data) => api.post(`/reportes/${id}/asignaciones`, data);
 
 // Likes y tendencias
