@@ -169,7 +169,7 @@ export const analizarImagenIA = (file) => {
     timeout: 30000,
   });
 };
-// FE-31 (BE-16): sugerencia de título y descripción basada en imágenes adjuntas
+// sugerencia de título y descripción basada en imágenes adjuntas
 export const sugerirContenidoReporte = (formData) =>
   api.post('/reportes/sugerir-contenido', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -177,7 +177,7 @@ export const sugerirContenidoReporte = (formData) =>
   });
 export const updateReporte  = (id, data)   => api.patch(`/reportes/${id}`, data);
 export const deleteReporte  = (id)         => api.delete(`/reportes/${id}`);
-export const exportReportes = (params)     => api.get('/reportes/export', { params });
+export const exportReportes = (params)     => api.get('/reportes/export', { params, responseType: 'arraybuffer' });
 
 // Likes y tendencias
 export const toggleLikeReporte  = (id)         => api.post(`/reportes/${id}/like`);
