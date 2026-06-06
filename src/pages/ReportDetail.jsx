@@ -5,6 +5,7 @@ import {
   Waves, ArrowLeft, MapPin, Calendar, Eye,
   User, ShieldCheck, ImageOff, Sparkles,
   Pencil, Check, AlertTriangle, Loader2, MessageSquare,
+  ChevronDown, ChevronUp, Hash, Clock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getReporteById, updateReporte, deleteReporte } from '../services/api';
@@ -169,6 +170,76 @@ function ImageCard({ ev, onOpen }) {
         </>
       )}
     </button>
+  );
+}
+
+function IaBadge({ iaAnalysis, report }) {
+  const [open, setOpen] = useState(false);
+  const { principal, etiquetas, confianza } = iaAnalysis;
+  const coincide = normalizeEstado(principal.label) === normalizeEstado(report.tipo_contaminacion);
+
+  return (
+    <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 overflow-hidden">
+      {/* Pill / header colapsable */}
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-purple-500/5 transition-colors"
+      >
+        <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+        <span className="text-xs font-semibold uppercase tracking-wide text-purple-300">Análisis con IA</span>
+        <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30 tabular-nums">
+          {Math.round(confianza)}% confianza
+        </span>
+        {open ? <ChevronUp className="w-3.5 h-3.5 text-purple-400 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
+      </button>
+
+      {/* Contenido expandido */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 pt-1 border-t border-purple-500/20 space-y-3">
+              <p className="text-sm text-gray-300">
+                Categoría principal detectada:{' '}
+                <span className="font-semibold text-white">{principal.nombre ?? principal.label}</span>{' '}
+                {coincide
+                  ? <span className="text-emerald-300">— coincide con la categoría del reporte.</span>
+                  : <span className="text-amber-300">— el usuario eligió una categoría distinta.</span>
+                }
+              </p>
+              <ul className="space-y-2">
+                {etiquetas.slice(0, 5).map((e, idx) => {
+                  const score = Math.max(0, Math.min(100, Number(e.score) || 0));
+                  const esTop = idx === 0;
+                  return (
+                    <li key={`${e.label}-${idx}`} className="text-xs">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={esTop ? 'text-white font-medium' : 'text-gray-400'}>
+                          {e.nombre ?? e.label}
+                        </span>
+                        <span className="font-mono text-gray-500">{score}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${esTop ? 'bg-purple-400' : 'bg-purple-500/40'}`}
+                          style={{ width: `${score}%` }}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -552,57 +623,8 @@ export default function ReportDetail() {
             <p className="text-gray-500 italic text-sm">Sin descripción proporcionada.</p>
           )}
 
-          {/* FE-25 · Analisis con IA (solo si hay una clasificacion util) */}
-          {iaAnalysis && (() => {
-            const { principal, etiquetas, confianza } = iaAnalysis;
-            const coincide = normalizeEstado(principal.label) === normalizeEstado(report.tipo_contaminacion);
-            return (
-              <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 sm:p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="w-4 h-4 text-purple-400" />
-                  <p className="text-xs font-semibold uppercase tracking-wide text-purple-300">
-                    Analisis con IA
-                  </p>
-                  <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30">
-                    Confianza {Math.round(confianza)}%
-                  </span>
-                </div>
-
-                <p className="text-sm text-gray-300 mb-3">
-                  La IA identifico como resultado principal{' '}
-                  <span className="font-semibold text-white">{principal.nombre ?? principal.label}</span>{' '}
-                  {coincide ? (
-                    <span className="text-emerald-300"> y coincide con la categoria final del reporte.</span>
-                  ) : (
-                    <span className="text-amber-300">; el reporte conserva la categoria elegida por el usuario.</span>
-                  )}
-                </p>
-
-                <ul className="space-y-2">
-                  {etiquetas.slice(0, 5).map((e, idx) => {
-                    const score = Math.max(0, Math.min(100, Number(e.score) || 0));
-                    const esTop = idx === 0;
-                    return (
-                      <li key={`${e.label}-${idx}`} className="text-xs">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={esTop ? 'text-white font-medium' : 'text-gray-400'}>
-                            {e.nombre ?? e.label}
-                          </span>
-                          <span className="font-mono text-gray-500">{score}%</span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${esTop ? 'bg-purple-400' : 'bg-purple-500/40'}`}
-                            style={{ width: `${score}%` }}
-                          />
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            );
-          })()}
+          {/* IA colapsable */}
+          {iaAnalysis && <IaBadge iaAnalysis={iaAnalysis} report={report} />}
 
           {/* Comentario del moderador */}
           {report.comentario_moderacion && (
@@ -691,7 +713,25 @@ export default function ReportDetail() {
               </div>
             </div>
 
-            {/* Autor — al lado de Registrado, debajo de Coordenadas */}
+            {report.updated_at && report.updated_at !== report.created_at && (
+              <div className="flex items-start gap-2">
+                <Clock className="w-4 h-4 mt-0.5 text-gray-600 shrink-0" />
+                <div>
+                  <p className="text-gray-500 text-xs mb-0.5">Última actualización</p>
+                  <p className="text-gray-400 text-sm">{formatDate(report.updated_at)}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-start gap-2">
+              <Hash className="w-4 h-4 mt-0.5 text-gray-600 shrink-0" />
+              <div>
+                <p className="text-gray-500 text-xs mb-0.5">ID del reporte</p>
+                <p className="text-gray-500 font-mono text-xs">#{report.id_reporte}</p>
+              </div>
+            </div>
+
+            {/* Autor */}
             {autor && (
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center overflow-hidden shrink-0">
