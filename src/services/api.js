@@ -105,8 +105,10 @@ export const checkHealth = () => api.get('/health');
 // ── Auth ──
 export const loginUser    = (email, password)                                   => api.post('/auth/login',    { email, password });
 export const registerUser = (nombre, apellido, email, password, telefono)       => api.post('/auth/register', { nombre, apellido, email, password, telefono });
-export const oauthGoogle   = (access_token) => api.post('/auth/google',   { access_token });
-export const oauthFacebook = (code)          => api.post('/auth/facebook', { code });
+export const oauthGoogle        = (access_token) => api.post('/auth/google',   { access_token });
+export const oauthFacebook      = (code)          => api.post('/auth/facebook', { code });
+export const getGoogleAuthUrl   = ()              => api.get('/auth/google/url');
+export const getFacebookAuthUrl = ()              => api.get('/auth/facebook/url');
 
 // ── Categorías ──
 export const getCategorias         = ()       => api.get('/categorias');
@@ -186,3 +188,17 @@ export const eliminarNotificacion             = (uuid)    => api.delete(`/notifi
 // FE-30 (BE-15): push notifications FCM
 export const registrarFcmToken = (token) => api.post('/notificaciones/fcm-token', { token });
 
+// ── Entidades ──
+export const getEntidades = () => api.get('/entidades');
+
+// ── Moderación: asignación de reportes a entidades ──
+export const asignarReporteEntidad = (idReporte, data) => api.post(`/reportes/${idReporte}/asignar-entidad`, data);
+
+// ── Panel de entidad ──
+export const getMisReportesEntidad          = (params)           => api.get('/entidad/reportes', { params });
+export const getMiReporteEntidad            = (idReporte)        => api.get(`/entidad/reportes/${idReporte}`);
+export const actualizarAtencionEntidad      = (idReporte, data)  => api.patch(`/entidad/reportes/${idReporte}/atencion`, data);
+export const getMisAlertasEntidad           = (params)           => api.get('/entidad/alertas', { params });
+export const getMisAlertasNoLeidasCountEntidad = ()              => api.get('/entidad/alertas/contador');
+export const marcarAlertaEntidadLeida       = (idAlerta)         => api.patch(`/entidad/alertas/${idAlerta}/leida`);
+export const marcarTodasAlertasEntidadLeidas = ()                => api.patch('/entidad/alertas/marcar-todas');
