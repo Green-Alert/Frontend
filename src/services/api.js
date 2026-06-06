@@ -183,7 +183,7 @@ export const exportReportes = (params)     => api.get('/reportes/export', { para
 export const toggleLikeReporte  = (id)         => api.post(`/reportes/${id}/like`);
 export const getTrendingReportes = (params)    => api.get('/reportes/trending', { params });
 
-// FE-26 (BE-11): zonas de riesgo predictivas y alertas
+// zonas de riesgo predictivas y alertas
 export const getZonasRiesgo        = (params) => api.get('/reportes/zonas-riesgo',        { params });
 export const getAlertasPredictivas = (params) => api.get('/reportes/alertas-predictivas', { params });
 
@@ -208,18 +208,18 @@ export const cambiarRolUsuario    = (id, rol)           => api.patch(`/admin/usu
 export const cambiarEstadoUsuario = (id, activo)        => api.patch(`/admin/usuarios/${id}/estado`, { activo });
 export const eliminarUsuarioAdmin = (id)                => api.delete(`/admin/usuarios/${id}`);
 
-// FE-28 (BE-13): chatbot conversacional
+// chatbot conversacional
 export const sendChatMessage = (payload, options = {}) => api.post('/chatbot/mensaje', payload, { timeout: 10000, ...options });
 export const getChatFaqs = () => api.get('/chatbot/faqs');
 
-// FE-29 (BE-14): notificaciones in-app
+// notificaciones in-app
 export const getNotificaciones                = (params)  => api.get('/notificaciones', { params });
 export const getNotificacionesContador        = ()        => api.get('/notificaciones/contador');
 export const marcarNotificacionLeida          = (uuid)    => api.patch(`/notificaciones/${uuid}/leida`);
 export const marcarTodasNotificacionesLeidas  = ()        => api.patch('/notificaciones/marcar-todas');
 export const eliminarNotificacion             = (uuid)    => api.delete(`/notificaciones/${uuid}`);
 
-// FE-30 (BE-15): push notifications FCM
+// push notifications FCM
 export const registrarFcmToken = (token) => api.post('/notificaciones/fcm-token', { token });
 
 // ── Entidades ──

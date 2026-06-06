@@ -79,7 +79,7 @@ function ReportDetailMap({ lat, lon }) {
   };
 
   return (
-    <div className="relative rounded-xl overflow-hidden border border-gray-700/60 h-56 sm:h-72 z-0" style={{ isolation: 'isolate' }}>
+    <div className="relative rounded-xl overflow-hidden border border-gray-700/60 h-52 sm:h-64 lg:h-80 z-0" style={{ isolation: 'isolate' }}>
       {/* Selector de estilo */}
       <div className="absolute top-2 right-2 z-[1000] flex gap-0.5 bg-gray-950/90 backdrop-blur border border-gray-700 rounded-lg p-0.5">
         {DETAIL_MAP_TILES.map((t) => (
@@ -672,7 +672,7 @@ export default function ReportDetail() {
           </div>{/* end LEFT */}
 
           {/* RIGHT: mapa + meta */}
-          <div className="flex flex-col gap-5 p-6 sm:p-8 lg:w-80 lg:shrink-0 border-t border-gray-800 lg:border-t-0">
+          <div className="flex flex-col gap-5 p-6 sm:p-8 lg:w-96 lg:shrink-0 border-t border-gray-800 lg:border-t-0">
 
           {/* Mapa de ubicación */}
           {report.latitud && report.longitud && (
@@ -688,7 +688,7 @@ export default function ReportDetail() {
           )}
 
           {/* Meta grid */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-1 gap-4 pt-4 border-t border-gray-800 lg:border-t-0 text-sm">
+          <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 pt-4 border-t border-gray-800 lg:border-t-0 text-sm">
             {location && (
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 mt-0.5 text-green-400 shrink-0" />
@@ -718,7 +718,7 @@ export default function ReportDetail() {
               <Calendar className="w-4 h-4 mt-0.5 text-green-400 shrink-0" />
               <div>
                 <p className="text-gray-500 text-xs mb-0.5">Registrado</p>
-                <p className="text-gray-200">{formatDate(report.created_at)}</p>
+                  <p className="text-gray-200 text-xs leading-snug break-words">{formatDate(report.created_at)}</p>
               </div>
             </div>
 
@@ -750,7 +750,7 @@ export default function ReportDetail() {
                 <Clock className="w-4 h-4 mt-0.5 text-gray-600 shrink-0" />
                 <div>
                   <p className="text-gray-500 text-xs mb-0.5">Última actualización</p>
-                  <p className="text-gray-400 text-xs">{formatDate(report.updated_at)}</p>
+                  <p className="text-gray-400 text-xs leading-snug break-words">{formatDate(report.updated_at)}</p>
                 </div>
               </div>
             )}

@@ -914,24 +914,36 @@ export default function Profile() {
                             </div>
 
                             {/* Thumbnail — panel derecho full-height */}
-                            <div className="hidden sm:block shrink-0 w-28 lg:w-36 relative overflow-hidden border-l border-gray-800/60">
+                            <div
+                              className="hidden sm:flex shrink-0 w-28 lg:w-36 overflow-hidden border-l border-gray-800/60 items-stretch"
+                              style={{ background: r.primera_imagen ? undefined : `${accentColor}0d` }}
+                            >
                               {r.primera_imagen ? (
                                 <img
                                   src={r.primera_imagen}
                                   alt="evidencia"
-                                  className="absolute inset-0 w-full h-full object-cover"
+                                  className="w-full object-cover"
+                                  style={{ minHeight: '100%' }}
                                   onError={(e) => {
+                                    const parent = e.currentTarget.parentElement;
                                     e.currentTarget.style.display = 'none';
-                                    e.currentTarget.nextElementSibling.style.display = 'flex';
+                                    parent.style.background = `${accentColor}0d`;
+                                    parent.style.alignItems = 'center';
+                                    parent.style.justifyContent = 'center';
+                                    const icon = parent.querySelector('[data-fallback]');
+                                    if (icon) icon.style.display = 'flex';
                                   }}
                                 />
-                              ) : null}
-                              <div
-                                className="absolute inset-0 items-center justify-center"
-                                style={{ display: r.primera_imagen ? 'none' : 'flex', background: `${accentColor}0d` }}
-                              >
-                                <CategoryIcon tipo={r.tipo_contaminacion} color={accentColor} size={32} />
-                              </div>
+                              ) : (
+                                <div className="w-full flex items-center justify-center">
+                                  <CategoryIcon tipo={r.tipo_contaminacion} color={accentColor} size={32} />
+                                </div>
+                              )}
+                              {r.primera_imagen && (
+                                <div data-fallback className="w-full items-center justify-center hidden">
+                                  <CategoryIcon tipo={r.tipo_contaminacion} color={accentColor} size={32} />
+                                </div>
+                              )}
                             </div>
 
                           </div>
