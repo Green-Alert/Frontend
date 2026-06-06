@@ -9,7 +9,7 @@ import CampanaNotificaciones from './notificaciones/CampanaNotificaciones.jsx';
 
 const navItems = [
   { to: '/',           label: 'Inicio',          end: true,  guestOnly: true, scrollToTop: true },
-  { to: '/dashboard',  label: 'Página Principal', authOnly: true },
+  { to: '/dashboard',  label: 'Página Principal', roles: ['ciudadano', 'moderador', 'admin'] },
   { to: '/reports',    label: 'Reportes',         authOnly: true },
   { to: '/entidad',    label: 'Mi Entidad',       roles: ['entidad'] },
   { to: '/moderacion', label: 'Moderación',       roles: ['moderador', 'admin'] },
