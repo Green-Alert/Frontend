@@ -4,7 +4,7 @@ import {
   Droplets, Trees, Flame, Wind, Trash2, Leaf,
   Waves, ArrowLeft, MapPin, Calendar, Eye,
   User, ShieldCheck, ImageOff, Sparkles,
-  Pencil, Check, AlertTriangle, Loader2,
+  Pencil, Check, AlertTriangle, Loader2, MessageSquare,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getReporteById, updateReporte, deleteReporte } from '../services/api';
@@ -604,7 +604,18 @@ export default function ReportDetail() {
             );
           })()}
 
-          {/* Evidence gallery */}
+          {/* Comentario del moderador */}
+          {report.comentario_moderacion && (
+            <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-amber-500/8 border border-amber-500/25">
+              <MessageSquare className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-amber-300 mb-1">Comentario del moderador</p>
+                <p className="text-sm text-gray-300 leading-relaxed">{report.comentario_moderacion}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Evidencias */}
           {hasMedia && (
             <div>
               <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-3">

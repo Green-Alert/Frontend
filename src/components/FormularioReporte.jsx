@@ -1,4 +1,4 @@
-import { useState, useRef, lazy, Suspense } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Paperclip, AlertCircle, Info,
@@ -52,6 +52,20 @@ const SEVERIDAD_ACTIVE = {
 
 const STEPS = ['Categoría', 'Detalle', 'Ubicación', 'Confirmación'];
 
+const IA_HINT_MSGS = [
+  '¿No sabes qué categoría elegir?',
+  'Sube una foto · la IA detecta el tipo',
+  'Sugiere subcategoría y severidad',
+  'Análisis de imagen gratuito',
+];
+
+const SUGER_HINT_MSGS = [
+  'Redacta el título y descripción con IA',
+  'Sube 1-3 fotos · la IA escribe por ti',
+  'Ahorra tiempo al describir el problema',
+  'Generación automática de contenido',
+];
+
 // Listas pre-computadas para el picker
 const TODA_CONFIG = Object.entries(CONFIGURACION_CATEGORIAS).map(([value, cfg]) => ({ value, ...cfg }));
 const CATS_RIESGO        = TODA_CONFIG.filter(c => CATEGORIAS_RIESGO.has(c.value));
@@ -93,7 +107,25 @@ export default function FormularioReporte() {
     files:              [], // [{ id, raw, compressed, preview, isVideo }]
   });
 
-  const [gettingGPS, setGettingGPS] = useState(false);
+  const [gettingGPS,      setGettingGPS]      = useState(false);
+  const [iaExpanded,       setIaExpanded]       = useState(false);
+  const [iaMsgIdx,         setIaMsgIdx]         = useState(0);
+  const [sugerIAExpanded,  setSugerIAExpanded]  = useState(false);
+  const [sugerMsgIdx,      setSugerMsgIdx]      = useState(0);
+
+  // Rota el mensaje del hint de IA (categoría)
+  useEffect(() => {
+    if (step !== 0 || iaAnalisis.estado !== 'idle' || iaExpanded) return;
+    const id = setInterval(() => setIaMsgIdx(i => (i + 1) % IA_HINT_MSGS.length), 3200);
+    return () => clearInterval(id);
+  }, [step, iaAnalisis.estado, iaExpanded]);
+
+  // Rota el mensaje del hint de IA (contenido)
+  useEffect(() => {
+    if (step !== 1 || sugerIA.estado !== 'idle' || sugerIAExpanded) return;
+    const id = setInterval(() => setSugerMsgIdx(i => (i + 1) % SUGER_HINT_MSGS.length), 3200);
+    return () => clearInterval(id);
+  }, [step, sugerIA.estado, sugerIAExpanded]);
 
   // Clasificación de imagen con IA antes de elegir categoría.
   // iaAnalisis = { estado: 'idle'|'analizando'|'sugerencia'|'aceptada'|'error',
@@ -534,6 +566,45 @@ export default function FormularioReporte() {
 
       <form onSubmit={handleSubmit}>
         <div className="card overflow-hidden">
+          {/* Chips contextuales — lo elegido en pasos anteriores */}
+          {step > 0 && (form.tipo_contaminacion || form.nivel_severidad) && (
+            <div className="flex flex-wrap items-center gap-2 px-6 pt-4 pb-0">
+              {form.tipo_contaminacion && (() => {
+                const cfg = helpers.obtenerConfig(form.tipo_contaminacion);
+                const Ic  = ICONO_MAP[cfg?.icono] ?? HelpCircle;
+                return (
+                  <span
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border font-medium"
+                    style={{
+                      borderColor: (cfg?.color ?? '#6B7280') + '60',
+                      backgroundColor: (cfg?.color ?? '#6B7280') + '18',
+                      color: cfg?.color ?? '#9CA3AF',
+                    }}
+                  >
+                    <Ic size={11} />
+                    {cfg?.nombre ?? form.tipo_contaminacion}
+                    {form.subcategoria && <span className="text-gray-500 font-normal"> · {form.subcategoria}</span>}
+                  </span>
+                );
+              })()}
+              {form.nivel_severidad && (
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs border font-medium ${SEVERIDAD_ACTIVE[form.nivel_severidad]}`}>
+                  {SEVERIDAD_LABELS[form.nivel_severidad]}
+                </span>
+              )}
+              {form.titulo && step > 1 && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs border border-gray-700 text-gray-400 max-w-[200px] truncate">
+                  &ldquo;{form.titulo}&rdquo;
+                </span>
+              )}
+              {form.municipio && step > 2 && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border border-gray-700 text-gray-400">
+                  📍 {form.municipio}
+                </span>
+              )}
+            </div>
+          )}
+
           <AnimatePresence mode="wait" custom={stepDir.current}>
             <motion.div
               key={step}
@@ -552,7 +623,45 @@ export default function FormularioReporte() {
           {/* ── Paso 0: Categoría ──────────────────────────────────────────── */}
           {step === 0 && (
             <div className="flex flex-col gap-6">
-              {/* FE-24 · Análisis IA: dropzone para sugerir categoría desde una foto */}
+              {/* FE-24 · Análisis IA: pill colapsable / panel expandido */}
+              <input
+                ref={iaInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleImagenIA}
+                className="hidden"
+              />
+
+              {/* Pill colapsado con mensaje rotativo */}
+              {iaAnalisis.estado === 'idle' && !iaExpanded && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIaExpanded(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 transition-colors overflow-hidden"
+                  >
+                    <Sparkles size={13} className="text-purple-400 shrink-0" />
+                    <div className="relative h-4 w-44 overflow-hidden">
+                      <AnimatePresence mode="wait">
+                        <motion.span
+                          key={iaMsgIdx}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={{ duration: 0.35 }}
+                          className="absolute inset-0 text-[11px] text-purple-300 whitespace-nowrap leading-4"
+                        >
+                          {IA_HINT_MSGS[iaMsgIdx]}
+                        </motion.span>
+                      </AnimatePresence>
+                    </div>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">IA</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Panel expandido */}
+              {(iaExpanded || iaAnalisis.estado !== 'idle') && (
               <div className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-indigo-500/5 p-4 sm:p-5">
                 <div className="flex items-start gap-3">
                   <div className="shrink-0 w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
@@ -564,18 +673,13 @@ export default function FormularioReporte() {
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
                         IA
                       </span>
+                      {iaAnalisis.estado === 'idle' && (
+                        <button type="button" onClick={() => setIaExpanded(false)} className="ml-auto text-gray-500 hover:text-gray-300"><X size={13} /></button>
+                      )}
                     </h3>
                     <p className="text-xs text-gray-400 mt-0.5">
                       Sube una foto del problema y la IA te sugerirá la categoría más probable.
                     </p>
-
-                    <input
-                      ref={iaInputRef}
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      onChange={handleImagenIA}
-                      className="hidden"
-                    />
 
                     {/* Estados del análisis IA */}
                     {iaAnalisis.estado === 'idle' && (
@@ -685,6 +789,7 @@ export default function FormularioReporte() {
                   </div>
                 </div>
               </div>
+              )}
 
               <h2 className="font-semibold text-white">¿Qué tipo de problema ambiental es?</h2>
 
