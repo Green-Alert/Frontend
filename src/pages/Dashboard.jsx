@@ -377,7 +377,7 @@ export default function Dashboard() {
     <motion.div
       key={s.label}
       title={s.tooltip}
-      className={`relative overflow-hidden bg-gray-900/80 border border-gray-800/80 ${s.border} border-t-2 rounded-xl p-4 flex items-center gap-4 cursor-default`}
+      className={`relative overflow-hidden bg-gray-900/80 border border-gray-800/80 ${s.border} border-t-2 rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-4 cursor-default`}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.04 * i, duration: 0.35 }}
@@ -388,15 +388,15 @@ export default function Dashboard() {
         style={{ background: s.glow }}
       />
       {/* Icono */}
-      <div className={`w-10 h-10 ${s.bg} rounded-lg flex items-center justify-center shrink-0`}>
-        <s.Icon className={`w-5 h-5 ${s.accent}`} />
+      <div className={`w-8 h-8 sm:w-10 sm:h-10 ${s.bg} rounded-lg flex items-center justify-center shrink-0`}>
+        <s.Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${s.accent}`} />
       </div>
       {/* Contenido */}
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider leading-none mb-1.5 truncate">{s.label}</p>
+        <p className="text-[9px] sm:text-[10px] font-semibold text-gray-500 uppercase tracking-wider leading-none mb-1 sm:mb-1.5 truncate">{s.label}</p>
         <div className="flex items-baseline gap-0.5">
-          <CountUp target={s.value} className={`text-2xl font-extrabold leading-none ${s.accent}`} />
-          {s.suffix && <span className={`text-base font-extrabold leading-none ${s.accent}`}>{s.suffix}</span>}
+          <CountUp target={s.value} className={`text-xl sm:text-2xl font-extrabold leading-none ${s.accent}`} />
+          {s.suffix && <span className={`text-sm sm:text-base font-extrabold leading-none ${s.accent}`}>{s.suffix}</span>}
         </div>
       </div>
     </motion.div>

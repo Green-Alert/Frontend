@@ -4,7 +4,8 @@ import {
   Droplets, Trees, Flame, Wind, Trash2, Leaf,
   Waves, ArrowLeft, MapPin, Calendar, Eye,
   User, ShieldCheck, ImageOff, Sparkles,
-  Pencil, Check, AlertTriangle, Loader2,
+  Pencil, Check, AlertTriangle, Loader2, MessageSquare,
+  ChevronDown, ChevronUp, Clock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getReporteById, updateReporte, deleteReporte } from '../services/api';
@@ -48,8 +49,8 @@ const DETAIL_MAP_TILES = [
   {
     key: 'light',
     label: 'Claro',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   },
   {
     key: 'dark',
@@ -62,6 +63,7 @@ const DETAIL_MAP_TILES = [
     label: 'Satélite',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; <a href="https://www.esri.com/">Esri</a>, Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP',
+    labelsUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
   },
 ];
 
@@ -77,7 +79,7 @@ function ReportDetailMap({ lat, lon }) {
   };
 
   return (
-    <div className="relative rounded-xl overflow-hidden border border-gray-700 h-64" style={{ isolation: 'isolate' }}>
+    <div className="relative rounded-xl overflow-hidden border border-gray-700/60 h-52 sm:h-64 lg:h-80 z-0" style={{ isolation: 'isolate' }}>
       {/* Selector de estilo */}
       <div className="absolute top-2 right-2 z-[1000] flex gap-0.5 bg-gray-950/90 backdrop-blur border border-gray-700 rounded-lg p-0.5">
         {DETAIL_MAP_TILES.map((t) => (
@@ -105,6 +107,7 @@ function ReportDetailMap({ lat, lon }) {
           attribution={tile.attribution}
           maxZoom={19}
         />
+        {tile.labelsUrl && <TileLayer url={tile.labelsUrl} maxZoom={19} opacity={1} />}
         <Marker position={[lat, lon]} icon={reportPin} />
       </MapContainer>
     </div>
@@ -172,6 +175,76 @@ function ImageCard({ ev, onOpen }) {
   );
 }
 
+function IaBadge({ iaAnalysis, report }) {
+  const [open, setOpen] = useState(false);
+  const { principal, etiquetas, confianza } = iaAnalysis;
+  const coincide = normalizeEstado(principal.label) === normalizeEstado(report.tipo_contaminacion);
+
+  return (
+    <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 overflow-hidden">
+      {/* Pill / header colapsable */}
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-purple-500/5 transition-colors"
+      >
+        <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+        <span className="text-xs font-semibold uppercase tracking-wide text-purple-300">Análisis con IA</span>
+        <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30 tabular-nums">
+          {Math.round(confianza)}% confianza
+        </span>
+        {open ? <ChevronUp className="w-3.5 h-3.5 text-purple-400 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
+      </button>
+
+      {/* Contenido expandido */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 pt-1 border-t border-purple-500/20 space-y-3">
+              <p className="text-sm text-gray-300">
+                Categoría principal detectada:{' '}
+                <span className="font-semibold text-white">{principal.nombre ?? principal.label}</span>{' '}
+                {coincide
+                  ? <span className="text-emerald-300">— coincide con la categoría del reporte.</span>
+                  : <span className="text-amber-300">— el usuario eligió una categoría distinta.</span>
+                }
+              </p>
+              <ul className="space-y-2">
+                {etiquetas.slice(0, 5).map((e, idx) => {
+                  const score = Math.max(0, Math.min(100, Number(e.score) || 0));
+                  const esTop = idx === 0;
+                  return (
+                    <li key={`${e.label}-${idx}`} className="text-xs">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={esTop ? 'text-white font-medium' : 'text-gray-400'}>
+                          {e.nombre ?? e.label}
+                        </span>
+                        <span className="font-mono text-gray-500">{score}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${esTop ? 'bg-purple-400' : 'bg-purple-500/40'}`}
+                          style={{ width: `${score}%` }}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function VideoCard({ ev }) {
   const isVideo = ev.mime_type?.startsWith('video/') || ev.tipo_archivo === 'video';
   if (!isVideo) return null;
@@ -233,7 +306,7 @@ export default function ReportDetail() {
 
   if (loading) {
     return (
-      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-20 text-center text-gray-500">
+      <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-20 text-center text-gray-500">
         <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
         <p className="text-sm">Cargando reporte...</p>
       </div>
@@ -242,7 +315,7 @@ export default function ReportDetail() {
 
   if (error || !report) {
     return (
-      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-20 text-center">
+      <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-20 text-center">
         <p className="text-red-400 mb-4">{error || 'Reporte no encontrado.'}</p>
         <button onClick={() => navigate('/reports')} className="btn-secondary text-sm">
           Volver a Reportes
@@ -343,7 +416,7 @@ export default function ReportDetail() {
 
   return (
     <motion.div
-      className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10"
+      className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: 'easeOut' }}
@@ -372,7 +445,9 @@ export default function ReportDetail() {
         {/* Color banner */}
         <div className="h-1.5 w-full shrink-0" style={{ background: catColor }} />
 
-        <div className="flex flex-col gap-6 p-6 sm:p-8">
+        <div className="lg:flex lg:divide-x lg:divide-gray-800">
+          {/* LEFT: contenido principal */}
+          <div className="flex flex-col gap-6 p-6 sm:p-8 lg:flex-1 min-w-0">
           {/* Header */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4 sm:justify-between">
             <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -552,59 +627,21 @@ export default function ReportDetail() {
             <p className="text-gray-500 italic text-sm">Sin descripción proporcionada.</p>
           )}
 
-          {/* FE-25 · Analisis con IA (solo si hay una clasificacion util) */}
-          {iaAnalysis && (() => {
-            const { principal, etiquetas, confianza } = iaAnalysis;
-            const coincide = normalizeEstado(principal.label) === normalizeEstado(report.tipo_contaminacion);
-            return (
-              <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 sm:p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="w-4 h-4 text-purple-400" />
-                  <p className="text-xs font-semibold uppercase tracking-wide text-purple-300">
-                    Analisis con IA
-                  </p>
-                  <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30">
-                    Confianza {Math.round(confianza)}%
-                  </span>
-                </div>
+          {/* IA colapsable */}
+          {iaAnalysis && <IaBadge iaAnalysis={iaAnalysis} report={report} />}
 
-                <p className="text-sm text-gray-300 mb-3">
-                  La IA identifico como resultado principal{' '}
-                  <span className="font-semibold text-white">{principal.nombre ?? principal.label}</span>{' '}
-                  {coincide ? (
-                    <span className="text-emerald-300"> y coincide con la categoria final del reporte.</span>
-                  ) : (
-                    <span className="text-amber-300">; el reporte conserva la categoria elegida por el usuario.</span>
-                  )}
-                </p>
-
-                <ul className="space-y-2">
-                  {etiquetas.slice(0, 5).map((e, idx) => {
-                    const score = Math.max(0, Math.min(100, Number(e.score) || 0));
-                    const esTop = idx === 0;
-                    return (
-                      <li key={`${e.label}-${idx}`} className="text-xs">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={esTop ? 'text-white font-medium' : 'text-gray-400'}>
-                            {e.nombre ?? e.label}
-                          </span>
-                          <span className="font-mono text-gray-500">{score}%</span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${esTop ? 'bg-purple-400' : 'bg-purple-500/40'}`}
-                            style={{ width: `${score}%` }}
-                          />
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+          {/* Comentario del moderador */}
+          {report.comentario_moderacion && (
+            <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-amber-500/8 border border-amber-500/25">
+              <MessageSquare className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-amber-300 mb-1">Comentario del moderador</p>
+                <p className="text-sm text-gray-300 leading-relaxed">{report.comentario_moderacion}</p>
               </div>
-            );
-          })()}
+            </div>
+          )}
 
-          {/* Evidence gallery */}
+          {/* Evidencias */}
           {hasMedia && (
             <div>
               <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-3">
@@ -632,6 +669,11 @@ export default function ReportDetail() {
             </div>
           )}
 
+          </div>{/* end LEFT */}
+
+          {/* RIGHT: mapa + meta */}
+          <div className="flex flex-col gap-5 p-6 sm:p-8 lg:w-96 lg:shrink-0 border-t border-gray-800 lg:border-t-0">
+
           {/* Mapa de ubicación */}
           {report.latitud && report.longitud && (
             <div>
@@ -646,7 +688,7 @@ export default function ReportDetail() {
           )}
 
           {/* Meta grid */}
-          <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-gray-800 text-sm">
+          <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 pt-4 border-t border-gray-800 lg:border-t-0 text-sm">
             {location && (
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 mt-0.5 text-green-400 shrink-0" />
@@ -676,11 +718,11 @@ export default function ReportDetail() {
               <Calendar className="w-4 h-4 mt-0.5 text-green-400 shrink-0" />
               <div>
                 <p className="text-gray-500 text-xs mb-0.5">Registrado</p>
-                <p className="text-gray-200">{formatDate(report.created_at)}</p>
+                  <p className="text-gray-200 text-xs leading-snug break-words">{formatDate(report.created_at)}</p>
               </div>
             </div>
 
-            {/* Autor — al lado de Registrado, debajo de Coordenadas */}
+            {/* Autor */}
             {autor && (
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center overflow-hidden shrink-0">
@@ -702,8 +744,36 @@ export default function ReportDetail() {
                 </div>
               </div>
             )}
+
+            {report.updated_at && report.updated_at !== report.created_at && (
+              <div className="flex items-start gap-2">
+                <Clock className="w-4 h-4 mt-0.5 text-gray-600 shrink-0" />
+                <div>
+                  <p className="text-gray-500 text-xs mb-0.5">Última actualización</p>
+                  <p className="text-gray-400 text-xs leading-snug break-words">{formatDate(report.updated_at)}</p>
+                </div>
+              </div>
+            )}
+
+            {report.confianza_evidencia != null && (
+              <div className="flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 mt-0.5 text-gray-600 shrink-0" />
+                <div>
+                  <p className="text-gray-500 text-xs mb-0.5">Score de evidencia</p>
+                  <p className="text-xs">
+                    <span className={`font-semibold ${
+                      Number(report.confianza_evidencia) >= 70 ? 'text-green-400'
+                      : Number(report.confianza_evidencia) >= 40 ? 'text-amber-400'
+                      : 'text-red-400'
+                    }`}>{Math.round(Number(report.confianza_evidencia))}%</span>
+                    <span className="text-gray-600 ml-1">calidad de evidencias</span>
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+          </div>{/* end RIGHT */}
+        </div>{/* end lg:flex */}
       </div>
 
       {/* Confirmación de eliminación */}

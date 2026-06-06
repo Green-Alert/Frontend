@@ -5,17 +5,28 @@ const api = axios.create({
   timeout: 8000,
 });
 
-// Adjunta el token JWT en cada petición si existe
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('ga_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// ── Decodifica expiración del JWT sin librería ─────────────────────────────
+const getTokenExp = (token) => {
+  try {
+    // atob es API de browser, siempre disponible en este contexto
+    const payload = JSON.parse(window.atob(token.split('.')[1]));
+    return payload.exp ?? null;
+  } catch {
+    return null;
   }
-  return config;
-});
+};
 
-// Cola de requests que fallaron mientras se refrescaba el token
+// ── Limpia sesión y notifica a la app ─────────────────────────────────────
+const clearSession = () => {
+  localStorage.removeItem('ga_token');
+  localStorage.removeItem('ga_refresh_token');
+  localStorage.removeItem('ga_user');
+  window.dispatchEvent(new Event('ga:session-expired'));
+};
+
+// ── Estado compartido de refresh ──────────────────────────────────────────
 let isRefreshing = false;
+let proactiveRefreshPromise = null;
 let failedQueue = [];
 
 const processQueue = (error, token = null) => {
@@ -26,33 +37,72 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-const clearSession = () => {
-  localStorage.removeItem('ga_token');
-  localStorage.removeItem('ga_refresh_token');
-  localStorage.removeItem('ga_user');
+// Lógica de refresh reutilizada por ambos interceptores
+const doRefresh = () => {
+  const refreshToken = localStorage.getItem('ga_refresh_token');
+  if (!refreshToken) return Promise.reject(new Error('no_refresh_token'));
+  return axios
+    .post(`${api.defaults.baseURL}/auth/refresh`, { refreshToken }, { timeout: 8000 })
+    .then(({ data }) => {
+      const newAccess = data.data.accessToken || data.data.token;
+      const newRefresh = data.data.refreshToken;
+      localStorage.setItem('ga_token', newAccess);
+      if (newRefresh) localStorage.setItem('ga_refresh_token', newRefresh);
+      api.defaults.headers.common.Authorization = `Bearer ${newAccess}`;
+      return newAccess;
+    });
 };
 
-// Refresh silencioso: si el access token expiró, renueva automáticamente
+// ── Request interceptor: refresco PROACTIVO ───────────────────────────────
+// Si el token expira en < 2 min, se renueva ANTES de enviar la petición.
+// Esto evita fallos en uploads multipart que no se pueden reintentar.
+api.interceptors.request.use(async (config) => {
+  if (config.url?.includes('/auth/refresh') || config.url?.includes('/auth/login')) {
+    return config;
+  }
+
+  const token = localStorage.getItem('ga_token');
+  if (!token) return config;
+
+  const exp = getTokenExp(token);
+  const now = Math.floor(Date.now() / 1000);
+
+  if (exp && exp - now < 120) {
+    try {
+      if (!proactiveRefreshPromise) {
+        proactiveRefreshPromise = doRefresh().finally(() => {
+          proactiveRefreshPromise = null;
+        });
+      }
+      const freshToken = await proactiveRefreshPromise;
+      config.headers.Authorization = `Bearer ${freshToken}`;
+      return config;
+    } catch {
+      // Si falla el refresh proactivo, el response interceptor lo manejará
+    }
+  }
+
+  config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// ── Response interceptor: refresco REACTIVO (fallback 401) ────────────────
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const originalRequest = err.config;
 
-    // Solo intentar refresh en 401 y si no es una request de auth ni ya reintentada
     if (
       err.response?.status === 401 &&
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/refresh') &&
       !originalRequest.url?.includes('/auth/login')
     ) {
-      const refreshToken = localStorage.getItem('ga_refresh_token');
-
-      if (!refreshToken) {
+      if (!localStorage.getItem('ga_refresh_token')) {
         clearSession();
         return Promise.reject(err);
       }
 
-      // Si ya hay un refresh en curso, encolar esta request
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -67,25 +117,9 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Llamada directa con axios para no pasar por este interceptor
-        const { data } = await axios.post(
-          `${api.defaults.baseURL}/auth/refresh`,
-          { refreshToken },
-          { timeout: 8000 }
-        );
-
-        const newAccessToken = data.data.accessToken || data.data.token;
-        const newRefreshToken = data.data.refreshToken;
-
-        localStorage.setItem('ga_token', newAccessToken);
-        if (newRefreshToken) {
-          localStorage.setItem('ga_refresh_token', newRefreshToken);
-        }
-
-        api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-        processQueue(null, newAccessToken);
+        const newToken = await doRefresh();
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        processQueue(null, newToken);
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
@@ -149,7 +183,7 @@ export const exportReportes = (params)     => api.get('/reportes/export', { para
 export const toggleLikeReporte  = (id)         => api.post(`/reportes/${id}/like`);
 export const getTrendingReportes = (params)    => api.get('/reportes/trending', { params });
 
-// FE-26 (BE-11): zonas de riesgo predictivas y alertas
+// zonas de riesgo predictivas y alertas
 export const getZonasRiesgo        = (params) => api.get('/reportes/zonas-riesgo',        { params });
 export const getAlertasPredictivas = (params) => api.get('/reportes/alertas-predictivas', { params });
 
@@ -174,25 +208,25 @@ export const cambiarRolUsuario    = (id, rol)           => api.patch(`/admin/usu
 export const cambiarEstadoUsuario = (id, activo)        => api.patch(`/admin/usuarios/${id}/estado`, { activo });
 export const eliminarUsuarioAdmin = (id)                => api.delete(`/admin/usuarios/${id}`);
 
-// FE-28 (BE-13): chatbot conversacional
+// chatbot conversacional
 export const sendChatMessage = (payload, options = {}) => api.post('/chatbot/mensaje', payload, { timeout: 10000, ...options });
 export const getChatFaqs = () => api.get('/chatbot/faqs');
 
-// FE-29 (BE-14): notificaciones in-app
+// notificaciones in-app
 export const getNotificaciones                = (params)  => api.get('/notificaciones', { params });
 export const getNotificacionesContador        = ()        => api.get('/notificaciones/contador');
 export const marcarNotificacionLeida          = (uuid)    => api.patch(`/notificaciones/${uuid}/leida`);
 export const marcarTodasNotificacionesLeidas  = ()        => api.patch('/notificaciones/marcar-todas');
 export const eliminarNotificacion             = (uuid)    => api.delete(`/notificaciones/${uuid}`);
 
-// FE-30 (BE-15): push notifications FCM
+// push notifications FCM
 export const registrarFcmToken = (token) => api.post('/notificaciones/fcm-token', { token });
 
 // ── Entidades ──
 export const getEntidades = () => api.get('/entidades');
 
 // ── Moderación: asignación de reportes a entidades ──
-export const asignarReporteEntidad = (idReporte, data) => api.post(`/reportes/${idReporte}/asignar-entidad`, data);
+export const asignarReporteEntidad = (idReporte, data) => api.post(`/reportes/${idReporte}/asignaciones`, data);
 
 // ── Panel de entidad ──
 export const getMisReportesEntidad          = (params)           => api.get('/entidad/reportes', { params });
