@@ -229,10 +229,10 @@ export const getEntidades = () => api.get('/entidades');
 export const asignarReporteEntidad = (idReporte, data) => api.post(`/reportes/${idReporte}/asignaciones`, data);
 
 // ── Panel de entidad ──
-export const getMisReportesEntidad          = (params)           => api.get('/entidad/reportes', { params });
-export const getMiReporteEntidad            = (idReporte)        => api.get(`/entidad/reportes/${idReporte}`);
-export const actualizarAtencionEntidad      = (idReporte, data)  => api.patch(`/entidad/reportes/${idReporte}/atencion`, data);
-export const getMisAlertasEntidad           = (params)           => api.get('/entidad/alertas', { params });
-export const getMisAlertasNoLeidasCountEntidad = ()              => api.get('/entidad/alertas/contador');
-export const marcarAlertaEntidadLeida       = (idAlerta)         => api.patch(`/entidad/alertas/${idAlerta}/leida`);
-export const marcarTodasAlertasEntidadLeidas = ()                => api.patch('/entidad/alertas/marcar-todas');
+export const getMisReportesEntidad             = (params)          => api.get('/entidades/mis-reportes', { params });
+export const getMiReporteEntidad               = (idReporte)       => api.get(`/entidades/mis-reportes/${idReporte}`);
+export const actualizarAtencionEntidad         = (idReporte, data) => api.patch(`/entidades/mis-reportes/${idReporte}/atencion`, data);
+export const getMisAlertasEntidad              = (params)          => api.get('/entidades/mis-alertas', { params });
+export const getMisAlertasNoLeidasCountEntidad = ()                => api.get('/entidades/mis-alertas/no-leidas/count');
+export const marcarAlertaEntidadLeida          = (idAlerta)        => api.patch(`/entidades/mis-alertas/${idAlerta}/leer`);
+export const marcarTodasAlertasEntidadLeidas   = ()                => api.patch('/entidades/mis-alertas/leer-todas');
