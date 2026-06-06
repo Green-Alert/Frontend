@@ -1,12 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import {
-  exchangeOAuthCallbackCode,
-  getPerfil,
-  loginUser,
-  oauthFacebook,
-  oauthGoogle,
-  registerUser,
-} from '../services/api';
+import { loginUser, registerUser, getPerfil, oauthGoogle, oauthFacebook } from '../services/api';
 import { useToast } from './ToastContext';
 
 const AuthContext = createContext(null);
@@ -28,6 +21,7 @@ export function AuthProvider({ children }) {
       })
       .catch(() => {
         localStorage.removeItem('ga_token');
+        localStorage.removeItem('ga_refresh_token');
         localStorage.removeItem('ga_user');
       })
       .finally(() => setLoading(false));
@@ -35,8 +29,9 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const res = await loginUser(email, password);
-    const { token, user: userData } = res.data.data;
+    const { token, refreshToken, user: userData } = res.data.data;
     localStorage.setItem('ga_token', token);
+    if (refreshToken) localStorage.setItem('ga_refresh_token', refreshToken);
     localStorage.setItem('ga_user', JSON.stringify(userData));
     setUser(userData);
     return userData;
@@ -44,8 +39,9 @@ export function AuthProvider({ children }) {
 
   const register = async (nombre, apellido, email, password, telefono) => {
     const res = await registerUser(nombre, apellido, email, password, telefono);
-    const { token, user: userData } = res.data.data;
+    const { token, refreshToken, user: userData } = res.data.data;
     localStorage.setItem('ga_token', token);
+    if (refreshToken) localStorage.setItem('ga_refresh_token', refreshToken);
     localStorage.setItem('ga_user', JSON.stringify(userData));
     setUser(userData);
     return userData;
@@ -59,8 +55,9 @@ export function AuthProvider({ children }) {
     return userData;
   };
 
-  const _saveSession = (token, userData) => {
+  const _saveSession = (token, userData, refreshToken = null) => {
     localStorage.setItem('ga_token', token);
+    if (refreshToken) localStorage.setItem('ga_refresh_token', refreshToken);
     localStorage.setItem('ga_user', JSON.stringify(userData));
     setUser(userData);
     return userData;
@@ -68,31 +65,26 @@ export function AuthProvider({ children }) {
 
   const loginWithGoogle = async (accessToken) => {
     const res = await oauthGoogle(accessToken);
-    const { token, user: userData } = res.data.data;
-    return _saveSession(token, userData);
+    const { token, refreshToken, user: userData } = res.data.data;
+    return _saveSession(token, userData, refreshToken);
   };
 
   const loginWithFacebook = async (code) => {
     const res = await oauthFacebook(code);
-    const { token, user: userData } = res.data.data;
-    return _saveSession(token, userData);
-  };
-
-  const completeOAuthCallback = async (code) => {
-    const res = await exchangeOAuthCallbackCode(code);
-    const { token, accessToken, user: userData } = res.data.data;
-    return _saveSession(token || accessToken, userData);
+    const { token, refreshToken, user: userData } = res.data.data;
+    return _saveSession(token, userData, refreshToken);
   };
 
   const logout = () => {
     localStorage.removeItem('ga_token');
+    localStorage.removeItem('ga_refresh_token');
     localStorage.removeItem('ga_user');
     setUser(null);
     showToast('Sesión cerrada', 'info', 3500, { position: 'top-center', subtitle: 'Hasta pronto' });
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, loginWithGoogle, loginWithFacebook, completeOAuthCallback }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, loginWithGoogle, loginWithFacebook }}>
       {children}
     </AuthContext.Provider>
   );
