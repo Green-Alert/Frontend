@@ -4,7 +4,7 @@ import {
   Shield, Users, FileText, ShieldCheck, Building2,
   TrendingUp, AlertTriangle, CheckCircle2, Clock,
   ArrowRight, Loader2, UserCheck, UserX, UserPlus, Activity,
-  MapPin, Sparkles, XCircle, BarChart3, RefreshCw,
+  MapPin, Sparkles, BarChart3, RefreshCw,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getAdminStats, getStatsCategoria, getStatsIA } from '../services/api';
