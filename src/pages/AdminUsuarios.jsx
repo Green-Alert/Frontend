@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Users, Search, Shield, ShieldCheck, UserCircle,
+  Users, Search, Shield, ShieldCheck, UserCircle, Building2,
   CheckCircle2, XCircle, Trash2, ChevronLeft, ChevronRight,
-  Loader2, AlertTriangle, RefreshCw,
+  Loader2, AlertTriangle, RefreshCw, UserCog,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAdminUsuarios, cambiarRolUsuario, cambiarEstadoUsuario, eliminarUsuarioAdmin } from '../services/api';
@@ -11,21 +11,28 @@ import { useAuth } from '../context/AuthContext';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
-const ROLES = ['ciudadano', 'moderador', 'admin', 'entidad'];
+const ROLES = ['ciudadano', 'moderador', 'admin'];
 
 const rolBadge = {
   ciudadano: 'bg-green-500/15 text-green-400 border-green-500/30',
   moderador: 'bg-blue-500/15  text-blue-400  border-blue-500/30',
   admin:     'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
-  entidad:   'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+  entidad:   'bg-violet-500/15 text-violet-300 border-violet-500/30',
 };
 const rolIcon = {
   ciudadano: UserCircle,
   moderador: ShieldCheck,
   admin:     Shield,
-  entidad:   ShieldCheck,
+  entidad:   Building2,
 };
-const rolLabel = { ciudadano: 'Ciudadano', moderador: 'Moderador', admin: 'Admin', entidad: 'Entidad' };
+const rolLabel = { ciudadano: 'Ciudadano', moderador: 'Moderador', admin: 'Admin' };
+
+const ROL_ACCENT = {
+  ciudadano: '#4ADE80',
+  moderador: '#60A5FA',
+  admin:     '#EAB308',
+  entidad:   '#A78BFA',
+};
 
 const formatDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
@@ -70,6 +77,7 @@ function UsuarioRow({ usuario, onCambiarRol, onToggleEstado, onEliminar, current
   const _RolIcon = rolIcon[usuario.rol] ?? UserCircle;
   const isMe = usuario.id_usuario === currentUserId;
   const busy = loadingId === usuario.id_usuario;
+  const accent = ROL_ACCENT[usuario.rol] ?? '#9CA3AF';
 
   return (
     <motion.tr
@@ -85,9 +93,9 @@ function UsuarioRow({ usuario, onCambiarRol, onToggleEstado, onEliminar, current
           <span
             className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 border"
             style={{
-              background: usuario.rol === 'admin' ? 'rgba(234,179,8,0.12)' : usuario.rol === 'moderador' ? 'rgba(59,130,246,0.12)' : 'rgba(34,197,94,0.12)',
-              borderColor: usuario.rol === 'admin' ? 'rgba(234,179,8,0.3)' : usuario.rol === 'moderador' ? 'rgba(59,130,246,0.3)' : 'rgba(34,197,94,0.3)',
-              color: usuario.rol === 'admin' ? '#EAB308' : usuario.rol === 'moderador' ? '#60A5FA' : '#4ADE80',
+              background: `${accent}1A`,
+              borderColor: `${accent}40`,
+              color: accent,
             }}
           >
             {usuario.nombre?.charAt(0).toUpperCase()}
@@ -179,11 +187,24 @@ export default function AdminUsuarios() {
   const [loadingId,  setLoadingId]  = useState(null);
   const [page,       setPage]       = useState(0);
   const [search,     setSearch]     = useState('');
+  const [searchInput,setSearchInput]= useState('');
   const [filtroRol,  setFiltroRol]  = useState('');
   const [filtroActivo, setFiltroActivo] = useState('');
 
   // Modal
   const [modal, setModal] = useState(null); // { type: 'rol'|'estado'|'eliminar', usuario, nuevoRol? }
+
+  // Debounce search
+  const debounceRef = useRef(null);
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearchInput(val);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setSearch(val);
+      setPage(0);
+    }, 350);
+  };
 
   const fetchUsuarios = useCallback(async () => {
     setLoading(true);
@@ -266,17 +287,19 @@ export default function AdminUsuarios() {
   };
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 space-y-6">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-yellow-500/10 border border-yellow-500/25 flex items-center justify-center shrink-0">
-            <Users className="w-6 h-6 text-yellow-400" />
+            <UserCog className="w-6 h-6 text-yellow-400" />
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white">Gestión de Usuarios</h1>
-            <p className="text-sm text-gray-400 mt-0.5">{total} usuario(s) en total</p>
+            <p className="text-sm text-gray-400 mt-0.5">
+              {loading ? 'Cargando...' : `${total} usuario${total !== 1 ? 's' : ''} en total`}
+            </p>
           </div>
         </div>
         <button onClick={fetchUsuarios} disabled={loading} className="flex items-center gap-2 btn-secondary text-sm">
@@ -285,37 +308,62 @@ export default function AdminUsuarios() {
       </div>
 
       {/* Filtros */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-wrap gap-3 items-center">
-        {/* Búsqueda */}
-        <div className="relative flex-1 min-w-[180px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre o email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-8 pr-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
-          />
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-3">
+        {/* Búsqueda + estado activo */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="relative flex-1 min-w-[180px]">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre o email..."
+              value={searchInput}
+              onChange={handleSearchChange}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-8 pr-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
+            />
+          </div>
+          <select
+            value={filtroActivo}
+            onChange={(e) => setFiltroActivo(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-green-500"
+          >
+            <option value="">Todos los estados</option>
+            <option value="true">Activos</option>
+            <option value="false">Inactivos</option>
+          </select>
         </div>
-        {/* Filtro rol */}
-        <select
-          value={filtroRol}
-          onChange={(e) => setFiltroRol(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-green-500"
-        >
-          <option value="">Todos los roles</option>
-          {ROLES.map((r) => <option key={r} value={r}>{rolLabel[r]}</option>)}
-        </select>
-        {/* Filtro activo */}
-        <select
-          value={filtroActivo}
-          onChange={(e) => setFiltroActivo(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-green-500"
-        >
-          <option value="">Todos los estados</option>
-          <option value="true">Activos</option>
-          <option value="false">Inactivos</option>
-        </select>
+
+        {/* Chips de rol */}
+        <div className="flex gap-1.5 flex-wrap">
+          <button
+            onClick={() => setFiltroRol('')}
+            className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all ${
+              filtroRol === ''
+                ? 'bg-gray-700 text-gray-100 border-gray-600'
+                : 'bg-gray-800/50 text-gray-400 border-gray-700/60 hover:border-gray-600 hover:text-gray-300'
+            }`}
+          >
+            Todos
+          </button>
+          {ROLES.map((r) => {
+            const Icon = rolIcon[r] ?? UserCircle;
+            const accent = ROL_ACCENT[r] ?? '#9CA3AF';
+            const active = filtroRol === r;
+            return (
+              <button
+                key={r}
+                onClick={() => setFiltroRol(r)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium border transition-all ${
+                  active
+                    ? `${rolBadge[r]}`
+                    : 'bg-gray-800/50 text-gray-400 border-gray-700/60 hover:border-gray-600 hover:text-gray-300'
+                }`}
+              >
+                <Icon size={11} style={active ? { color: accent } : {}} />
+                {rolLabel[r]}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Tabla */}
