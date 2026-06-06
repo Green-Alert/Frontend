@@ -27,6 +27,21 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
+  // Escucha el evento de sesión expirada despachado por api.js
+  useEffect(() => {
+    const handleExpired = () => {
+      setUser(null);
+      showToast(
+        'Tu sesión ha expirado. Inicia sesión nuevamente.',
+        'error',
+        6000,
+        { position: 'top-center' }
+      );
+    };
+    window.addEventListener('ga:session-expired', handleExpired);
+    return () => window.removeEventListener('ga:session-expired', handleExpired);
+  }, [showToast]);
+
   const login = async (email, password) => {
     const res = await loginUser(email, password);
     const { token, refreshToken, user: userData } = res.data.data;

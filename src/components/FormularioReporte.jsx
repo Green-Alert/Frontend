@@ -60,9 +60,9 @@ const IA_HINT_MSGS = [
 ];
 
 const SUGER_HINT_MSGS = [
-  'Redacta el título y descripción con IA',
-  'Sube 1-3 fotos · la IA escribe por ti',
-  'Ahorra tiempo al describir el problema',
+  'Redacta título y descripción con IA',
+  'Sube fotos · la IA escribe por ti',
+  'Ahorra tiempo describiendo el problema',
   'Generación automática de contenido',
 ];
 
@@ -113,6 +113,18 @@ export default function FormularioReporte() {
   const [sugerIAExpanded,  setSugerIAExpanded]  = useState(false);
   const [sugerMsgIdx,      setSugerMsgIdx]      = useState(0);
 
+  // Clasificación de imagen con IA antes de elegir categoría.
+  // iaAnalisis = { estado: 'idle'|'analizando'|'sugerencia'|'aceptada'|'error',
+  //                categoria, nombre, confianza, etiquetas, mensajeError }
+  const [iaAnalisis, setIaAnalisis] = useState({ estado: 'idle' });
+  const iaInputRef = useRef(null);
+  const submitLockRef = useRef(false);
+
+  // FE-31: sugerencia de título y descripción con IA a partir de imágenes.
+  // sugerIA = { estado: 'idle'|'analizando'|'aplicada'|'error', mensajeError? }
+  const [sugerIA, setSugerIA] = useState({ estado: 'idle' });
+  const sugerIAInputRef = useRef(null);
+
   // Rota el mensaje del hint de IA (categoría)
   useEffect(() => {
     if (step !== 0 || iaAnalisis.estado !== 'idle' || iaExpanded) return;
@@ -126,18 +138,6 @@ export default function FormularioReporte() {
     const id = setInterval(() => setSugerMsgIdx(i => (i + 1) % SUGER_HINT_MSGS.length), 3200);
     return () => clearInterval(id);
   }, [step, sugerIA.estado, sugerIAExpanded]);
-
-  // Clasificación de imagen con IA antes de elegir categoría.
-  // iaAnalisis = { estado: 'idle'|'analizando'|'sugerencia'|'aceptada'|'error',
-  //                categoria, nombre, confianza, etiquetas, mensajeError }
-  const [iaAnalisis, setIaAnalisis] = useState({ estado: 'idle' });
-  const iaInputRef = useRef(null);
-  const submitLockRef = useRef(false);
-
-  // FE-31: sugerencia de título y descripción con IA a partir de imágenes.
-  // sugerIA = { estado: 'idle'|'analizando'|'aplicada'|'error', mensajeError? }
-  const [sugerIA, setSugerIA] = useState({ estado: 'idle' });
-  const sugerIAInputRef = useRef(null);
 
   const set = (key, val) => setForm(p => ({ ...p, [key]: val }));
 
@@ -583,10 +583,14 @@ export default function FormularioReporte() {
                   >
                     <Ic size={11} />
                     {cfg?.nombre ?? form.tipo_contaminacion}
-                    {form.subcategoria && <span className="text-gray-500 font-normal"> · {form.subcategoria}</span>}
                   </span>
                 );
               })()}
+              {form.subcategoria && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs border border-gray-700 bg-gray-800/50 text-gray-400 font-normal">
+                  {form.subcategoria}
+                </span>
+              )}
               {form.nivel_severidad && (
                 <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs border font-medium ${SEVERIDAD_ACTIVE[form.nivel_severidad]}`}>
                   {SEVERIDAD_LABELS[form.nivel_severidad]}
@@ -610,9 +614,9 @@ export default function FormularioReporte() {
               key={step}
               custom={stepDir.current}
               variants={{
-                enter:  (d) => ({ opacity: 0, x: d * 28 }),
-                center: { opacity: 1, x: 0 },
-                exit:   (d) => ({ opacity: 0, x: d * -28 }),
+                enter:  (d) => ({ opacity: 0, y: d * 24 }),
+                center: { opacity: 1, y: 0 },
+                exit:   (d) => ({ opacity: 0, y: d * -24 }),
               }}
               initial="enter"
               animate="center"
@@ -638,10 +642,10 @@ export default function FormularioReporte() {
                   <button
                     type="button"
                     onClick={() => setIaExpanded(true)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 transition-colors overflow-hidden"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 transition-colors"
                   >
                     <Sparkles size={13} className="text-purple-400 shrink-0" />
-                    <div className="relative h-4 w-44 overflow-hidden">
+                    <div className="relative h-4 overflow-hidden" style={{ width: '13rem' }}>
                       <AnimatePresence mode="wait">
                         <motion.span
                           key={iaMsgIdx}
@@ -699,22 +703,32 @@ export default function FormularioReporte() {
 
                     {iaAnalisis.estado === 'analizando' && (
                       <div className="mt-3 rounded-lg bg-purple-500/10 border border-purple-500/30 p-3">
-                        <div className="flex items-center gap-2 text-purple-200 text-sm mb-2">
-                          <Loader2 size={14} className="animate-spin" />
-                          Analizando imagen con IA…
+                        <div className="flex items-center gap-2 text-purple-200 text-xs font-medium mb-3">
+                          <Loader2 size={13} className="animate-spin shrink-0" />
+                          Detectando categoría…
                         </div>
-                        {/* Skeleton: 3 barras simulando etiquetas en proceso */}
-                        <div className="space-y-1.5" aria-hidden="true">
-                          {[0, 1, 2].map((i) => (
+                        {/* Skeleton: chips simulando categorías detectadas */}
+                        <div className="flex flex-wrap gap-2" aria-hidden="true">
+                          {[52, 72, 60, 44].map((w, i) => (
                             <div
                               key={i}
-                              className="h-2 rounded-full bg-purple-500/20 overflow-hidden relative"
-                              style={{ width: `${90 - i * 20}%` }}
+                              className="h-6 rounded-full bg-purple-500/20 relative overflow-hidden"
+                              style={{ width: `${w}px` }}
                             >
-                              <div
-                                className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-400/40 to-transparent animate-pulse"
-                                style={{ animationDelay: `${i * 150}ms` }}
-                              />
+                              <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-purple-400/30 to-transparent"
+                                style={{ animationDelay: `${i * 120}ms` }} />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-2.5 flex flex-wrap gap-2" aria-hidden="true">
+                          {[80, 56].map((w, i) => (
+                            <div
+                              key={i}
+                              className="h-2 rounded-full bg-purple-500/15 relative overflow-hidden"
+                              style={{ width: `${w}px` }}
+                            >
+                              <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-purple-400/25 to-transparent"
+                                style={{ animationDelay: `${i * 180 + 200}ms` }} />
                             </div>
                           ))}
                         </div>
@@ -976,7 +990,46 @@ export default function FormularioReporte() {
                 Describe el problema
               </h2>
 
-              {/* FE-31 · Asistente IA: sugerir título y descripción desde fotos */}
+              {/* FE-31 · Asistente IA: pill colapsable / panel expandido */}
+              <input
+                ref={sugerIAInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                multiple
+                onChange={handleSugerirContenido}
+                className="hidden"
+              />
+
+              {/* Pill colapsado con mensaje rotativo */}
+              {sugerIA.estado === 'idle' && !sugerIAExpanded && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setSugerIAExpanded(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 transition-colors"
+                  >
+                    <Sparkles size={13} className="text-purple-400 shrink-0" />
+                    <div className="relative h-4 overflow-hidden" style={{ width: '13rem' }}>
+                      <AnimatePresence mode="wait">
+                        <motion.span
+                          key={sugerMsgIdx}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={{ duration: 0.35 }}
+                          className="absolute inset-0 text-[11px] text-purple-300 whitespace-nowrap leading-4"
+                        >
+                          {SUGER_HINT_MSGS[sugerMsgIdx]}
+                        </motion.span>
+                      </AnimatePresence>
+                    </div>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">IA</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Panel expandido */}
+              {(sugerIAExpanded || sugerIA.estado !== 'idle') && (
               <div className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-indigo-500/5 p-4 sm:p-5">
                 <div className="flex items-start gap-3">
                   <div className="shrink-0 w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
@@ -988,19 +1041,13 @@ export default function FormularioReporte() {
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
                         IA
                       </span>
+                      {sugerIA.estado === 'idle' && (
+                        <button type="button" onClick={() => setSugerIAExpanded(false)} className="ml-auto text-gray-500 hover:text-gray-300"><X size={13} /></button>
+                      )}
                     </h3>
                     <p className="text-xs text-gray-400 mt-0.5">
                       Sube 1-3 fotos del problema y la IA redactará el título y la descripción por ti.
                     </p>
-
-                    <input
-                      ref={sugerIAInputRef}
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      multiple
-                      onChange={handleSugerirContenido}
-                      className="hidden"
-                    />
 
                     {sugerIA.estado === 'idle' && (
                       <>
@@ -1018,21 +1065,26 @@ export default function FormularioReporte() {
                     )}
 
                     {sugerIA.estado === 'analizando' && (
-                      <div className="mt-3 rounded-lg bg-purple-500/10 border border-purple-500/30 p-3">
-                        <div className="flex items-center gap-2 text-purple-200 text-sm mb-2">
-                          <Loader2 size={14} className="animate-spin" />
-                          Generando redacción con IA…
+                      <div className="mt-3 rounded-lg bg-purple-500/10 border border-purple-500/30 p-3.5" aria-hidden="true">
+                        <div className="flex items-center gap-2 text-purple-200 text-xs font-medium mb-3">
+                          <Loader2 size={13} className="animate-spin shrink-0" />
+                          Generando redacción…
                         </div>
-                        <div className="space-y-1.5" aria-hidden="true">
-                          {[0, 1, 2].map((i) => (
+                        {/* Skeleton título */}
+                        <div className="h-5 rounded-md bg-purple-500/20 relative overflow-hidden mb-3" style={{ width: '70%' }}>
+                          <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-purple-400/30 to-transparent" />
+                        </div>
+                        {/* Skeleton descripción: 4 líneas */}
+                        <div className="space-y-2">
+                          {[100, 95, 88, 55].map((w, i) => (
                             <div
                               key={i}
-                              className="h-2 rounded-full bg-purple-500/20 overflow-hidden relative"
-                              style={{ width: `${90 - i * 20}%` }}
+                              className="h-2.5 rounded-full bg-purple-500/15 relative overflow-hidden"
+                              style={{ width: `${w}%` }}
                             >
                               <div
-                                className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-400/40 to-transparent animate-pulse"
-                                style={{ animationDelay: `${i * 150}ms` }}
+                                className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-purple-400/25 to-transparent"
+                                style={{ animationDelay: `${i * 100}ms` }}
                               />
                             </div>
                           ))}
@@ -1072,6 +1124,7 @@ export default function FormularioReporte() {
                   </div>
                 </div>
               </div>
+              )}{/* end panel sugerIA expandido */}
 
               {/* En LG+: sugerencias a la izquierda, campos a la derecha */}
               <div className={sugerencias.length > 0

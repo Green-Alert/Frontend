@@ -5,7 +5,7 @@ import {
   Waves, ArrowLeft, MapPin, Calendar, Eye,
   User, ShieldCheck, ImageOff, Sparkles,
   Pencil, Check, AlertTriangle, Loader2, MessageSquare,
-  ChevronDown, ChevronUp, Hash, Clock,
+  ChevronDown, ChevronUp, Clock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getReporteById, updateReporte, deleteReporte } from '../services/api';
@@ -49,8 +49,8 @@ const DETAIL_MAP_TILES = [
   {
     key: 'light',
     label: 'Claro',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   },
   {
     key: 'dark',
@@ -63,6 +63,7 @@ const DETAIL_MAP_TILES = [
     label: 'Satélite',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; <a href="https://www.esri.com/">Esri</a>, Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP',
+    labelsUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
   },
 ];
 
@@ -78,7 +79,7 @@ function ReportDetailMap({ lat, lon }) {
   };
 
   return (
-    <div className="relative rounded-xl overflow-hidden border border-gray-700 h-64" style={{ isolation: 'isolate' }}>
+    <div className="relative rounded-xl overflow-hidden border border-gray-700/60 h-56 sm:h-72 z-0" style={{ isolation: 'isolate' }}>
       {/* Selector de estilo */}
       <div className="absolute top-2 right-2 z-[1000] flex gap-0.5 bg-gray-950/90 backdrop-blur border border-gray-700 rounded-lg p-0.5">
         {DETAIL_MAP_TILES.map((t) => (
@@ -106,6 +107,7 @@ function ReportDetailMap({ lat, lon }) {
           attribution={tile.attribution}
           maxZoom={19}
         />
+        {tile.labelsUrl && <TileLayer url={tile.labelsUrl} maxZoom={19} opacity={1} />}
         <Marker position={[lat, lon]} icon={reportPin} />
       </MapContainer>
     </div>
@@ -304,7 +306,7 @@ export default function ReportDetail() {
 
   if (loading) {
     return (
-      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-20 text-center text-gray-500">
+      <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-20 text-center text-gray-500">
         <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
         <p className="text-sm">Cargando reporte...</p>
       </div>
@@ -313,7 +315,7 @@ export default function ReportDetail() {
 
   if (error || !report) {
     return (
-      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-20 text-center">
+      <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-20 text-center">
         <p className="text-red-400 mb-4">{error || 'Reporte no encontrado.'}</p>
         <button onClick={() => navigate('/reports')} className="btn-secondary text-sm">
           Volver a Reportes
@@ -414,7 +416,7 @@ export default function ReportDetail() {
 
   return (
     <motion.div
-      className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10"
+      className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: 'easeOut' }}
@@ -443,7 +445,9 @@ export default function ReportDetail() {
         {/* Color banner */}
         <div className="h-1.5 w-full shrink-0" style={{ background: catColor }} />
 
-        <div className="flex flex-col gap-6 p-6 sm:p-8">
+        <div className="lg:flex lg:divide-x lg:divide-gray-800">
+          {/* LEFT: contenido principal */}
+          <div className="flex flex-col gap-6 p-6 sm:p-8 lg:flex-1 min-w-0">
           {/* Header */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4 sm:justify-between">
             <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -665,6 +669,11 @@ export default function ReportDetail() {
             </div>
           )}
 
+          </div>{/* end LEFT */}
+
+          {/* RIGHT: mapa + meta */}
+          <div className="flex flex-col gap-5 p-6 sm:p-8 lg:w-80 lg:shrink-0 border-t border-gray-800 lg:border-t-0">
+
           {/* Mapa de ubicación */}
           {report.latitud && report.longitud && (
             <div>
@@ -679,7 +688,7 @@ export default function ReportDetail() {
           )}
 
           {/* Meta grid */}
-          <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-gray-800 text-sm">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-1 gap-4 pt-4 border-t border-gray-800 lg:border-t-0 text-sm">
             {location && (
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 mt-0.5 text-green-400 shrink-0" />
@@ -713,24 +722,6 @@ export default function ReportDetail() {
               </div>
             </div>
 
-            {report.updated_at && report.updated_at !== report.created_at && (
-              <div className="flex items-start gap-2">
-                <Clock className="w-4 h-4 mt-0.5 text-gray-600 shrink-0" />
-                <div>
-                  <p className="text-gray-500 text-xs mb-0.5">Última actualización</p>
-                  <p className="text-gray-400 text-sm">{formatDate(report.updated_at)}</p>
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-start gap-2">
-              <Hash className="w-4 h-4 mt-0.5 text-gray-600 shrink-0" />
-              <div>
-                <p className="text-gray-500 text-xs mb-0.5">ID del reporte</p>
-                <p className="text-gray-500 font-mono text-xs">#{report.id_reporte}</p>
-              </div>
-            </div>
-
             {/* Autor */}
             {autor && (
               <div className="flex items-center gap-3">
@@ -753,8 +744,36 @@ export default function ReportDetail() {
                 </div>
               </div>
             )}
+
+            {report.updated_at && report.updated_at !== report.created_at && (
+              <div className="flex items-start gap-2">
+                <Clock className="w-4 h-4 mt-0.5 text-gray-600 shrink-0" />
+                <div>
+                  <p className="text-gray-500 text-xs mb-0.5">Última actualización</p>
+                  <p className="text-gray-400 text-xs">{formatDate(report.updated_at)}</p>
+                </div>
+              </div>
+            )}
+
+            {report.confianza_evidencia != null && (
+              <div className="flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 mt-0.5 text-gray-600 shrink-0" />
+                <div>
+                  <p className="text-gray-500 text-xs mb-0.5">Score de evidencia</p>
+                  <p className="text-xs">
+                    <span className={`font-semibold ${
+                      Number(report.confianza_evidencia) >= 70 ? 'text-green-400'
+                      : Number(report.confianza_evidencia) >= 40 ? 'text-amber-400'
+                      : 'text-red-400'
+                    }`}>{Math.round(Number(report.confianza_evidencia))}%</span>
+                    <span className="text-gray-600 ml-1">calidad de evidencias</span>
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+          </div>{/* end RIGHT */}
+        </div>{/* end lg:flex */}
       </div>
 
       {/* Confirmación de eliminación */}

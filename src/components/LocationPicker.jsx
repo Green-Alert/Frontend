@@ -8,8 +8,8 @@ const MAP_TILES = [
   {
     key: 'light',
     label: 'Claro',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   },
   {
     key: 'dark',
@@ -22,6 +22,7 @@ const MAP_TILES = [
     label: 'Satélite',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; <a href="https://www.esri.com/">Esri</a>, Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP',
+    labelsUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
   },
 ];
 
@@ -124,6 +125,7 @@ export default function LocationPicker({ latitud, longitud, onChange, initialCen
               url={tile.url}
               attribution={tile.attribution}
             />
+            {tile.labelsUrl && <TileLayer url={tile.labelsUrl} maxZoom={19} opacity={1} />}
             <ClickHandler onPick={handlePick} />
             <FlyToCenter center={initialCenter} />
             {position && <Marker position={position} icon={pickerIcon} />}

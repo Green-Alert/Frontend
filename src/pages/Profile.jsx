@@ -118,6 +118,8 @@ function PwField({ label, value, onChange, show, onToggleShow, error, placeholde
 // ── Stepper de estado de reporte ─────────────────────────────────────────────
 const ESTADO_STEPS = [
   { key: 'pendiente',   label: 'Enviado'    },
+  { key: 'en_revision', label: 'Revisión'   },
+  { key: 'verificado',  label: 'Verificado' },
   { key: 'en_proceso',  label: 'En proceso' },
   { key: 'resuelto',    label: 'Resuelto'   },
 ];
@@ -272,7 +274,7 @@ export default function Profile() {
   };
 
   // ── Mis Reportes ──────────────────────────────────────────────────────────
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 15;
   const [misReportes,    setMisReportes]    = useState([]);
   const [misRptTotal,    setMisRptTotal]    = useState(0);
   const [misRptPage,     setMisRptPage]     = useState(0);
@@ -403,103 +405,100 @@ export default function Profile() {
   return (
     <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10">
 
-      {/* ── Hero card ──────────────────────────────────────────────────────── */}
-      <div className="card mb-8 p-6 sm:p-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+      {/* ── Layout LinkedIn: sidebar 38% + contenido 62% ───────────────────── */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
 
-          {/* Avatar */}
-          <div className="relative group shrink-0">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-green-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-green-900/30">
-              {perfil?.avatar_url ? (
-                <img src={perfil.avatar_url} alt={displayName} className="w-full h-full rounded-full object-cover" />
-              ) : (
-                <span className="text-white text-3xl sm:text-4xl font-bold select-none">{initial}</span>
-              )}
-            </div>
-            {/* Overlay cámara — abre selector de archivo */}
-            <button
-              type="button"
-              onClick={() => avatarInputRef.current?.click()}
-              disabled={avatarUploading}
-              aria-label="Cambiar foto de perfil"
-              className="absolute inset-0 rounded-full bg-black/55 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity cursor-pointer disabled:cursor-wait"
-            >
-              {avatarUploading
-                ? <Loader2 className="w-6 h-6 text-white animate-spin" />
-                : <><Camera className="w-5 h-5 text-white" /><span className="text-[10px] text-white/80 mt-0.5 leading-none">Cambiar</span></>
-              }
-            </button>
-            {/* Input oculto para selección de archivo */}
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={handleAvatarChange}
-            />
-          </div>
+        {/* ── SIDEBAR IZQUIERDO ─────────────────────────────────────────────── */}
+        <div className="w-full lg:w-[38%] lg:sticky lg:top-24 flex flex-col gap-4 shrink-0">
 
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <h1 className="text-xl sm:text-2xl font-bold text-white truncate">{displayName}</h1>
-              <span className={`text-xs px-2.5 py-0.5 rounded-full border font-medium ${rolColor[perfil?.rol] ?? rolColor.ciudadano}`}>
-                {(perfil?.rol === 'moderador' || perfil?.rol === 'admin') && (
-                  <ShieldCheck className="inline w-3 h-3 mr-1 -mt-0.5" />
-                )}
-                {rolLabel[perfil?.rol] ?? perfil?.rol}
-              </span>
+          {/* Hero card */}
+          <div className="card p-6">
+            {/* Avatar centrado */}
+            <div className="flex flex-col items-center gap-3 mb-5">
+              <div className="relative group shrink-0">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-green-900/30">
+                  {perfil?.avatar_url ? (
+                    <img src={perfil.avatar_url} alt={displayName} className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    <span className="text-white text-4xl font-bold select-none">{initial}</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  aria-label="Cambiar foto de perfil"
+                  className="absolute inset-0 rounded-full bg-black/55 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity cursor-pointer disabled:cursor-wait"
+                >
+                  {avatarUploading
+                    ? <Loader2 className="w-6 h-6 text-white animate-spin" />
+                    : <><Camera className="w-5 h-5 text-white" /><span className="text-[10px] text-white/80 mt-0.5 leading-none">Cambiar</span></>
+                  }
+                </button>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+              </div>
+
+              <div className="text-center min-w-0">
+                <h1 className="text-xl font-bold text-white truncate">{displayName}</h1>
+                <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full border font-medium mt-1 ${rolColor[perfil?.rol] ?? rolColor.ciudadano}`}>
+                  {(perfil?.rol === 'moderador' || perfil?.rol === 'admin') && (
+                    <ShieldCheck className="w-3 h-3" />
+                  )}
+                  {rolLabel[perfil?.rol] ?? perfil?.rol}
+                </span>
+                <p className="text-sm text-gray-400 mt-1 truncate">{perfil?.email ?? '—'}</p>
+                <p className="text-xs text-gray-600 mt-0.5">Miembro desde {formatDate(perfil?.created_at)}</p>
+              </div>
             </div>
-            <p className="text-sm text-gray-400 truncate">{perfil?.email ?? '—'}</p>
-            <p className="text-xs text-gray-600 mt-1">Miembro desde {formatDate(perfil?.created_at)}</p>
 
             {/* Barra completitud */}
             <ProfileCompletion perfil={perfil} />
           </div>
+
+          {/* Nav vertical */}
+          <nav className="card p-2">
+            {/* Mobile: tabs horizontales */}
+            <div className="flex lg:hidden gap-1 overflow-x-auto">
+              {NAV.map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setSection(key)}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors -mb-px
+                    ${section === key
+                      ? 'border-green-500 text-green-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                >
+                  <Icon size={14} />
+                  {label}
+                </button>
+              ))}
+            </div>
+            {/* Desktop: sidebar vertical */}
+            <div className="hidden lg:flex flex-col gap-0.5">
+              {NAV.map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setSection(key)}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-left transition-colors w-full
+                    ${section === key
+                      ? 'bg-green-500/10 text-green-400'
+                      : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/60'}`}
+                >
+                  <Icon size={15} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </nav>
         </div>
-      </div>
 
-      {/* ── Layout: sidebar + contenido ────────────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row gap-6">
-
-        {/* Sidebar / Tabs */}
-        <nav className="lg:w-52 shrink-0">
-          {/* Mobile: tabs horizontales */}
-          <div className="flex lg:hidden gap-1 border-b border-gray-800 mb-6 overflow-x-auto">
-            {NAV.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => setSection(key)}
-                className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors -mb-px
-                  ${section === key
-                    ? 'border-green-500 text-green-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-300'}`}
-              >
-                <Icon size={14} />
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Desktop: sidebar vertical */}
-          <div className="hidden lg:flex flex-col gap-1">
-            {NAV.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => setSection(key)}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-left transition-colors
-                  ${section === key
-                    ? 'bg-green-500/10 text-green-400'
-                    : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/60'}`}
-              >
-                <Icon size={15} />
-                {label}
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        {/* Contenido principal */}
+        {/* ── CONTENIDO DERECHO 62% ─────────────────────────────────────────── */}
         <div className="flex-1 min-w-0 space-y-5">
 
           {/* ── Pestaña: Perfil ─────────────────────────────────────────── */}
@@ -841,109 +840,97 @@ export default function Profile() {
                             style={{ background: accentColor }}
                           />
 
-                          <div className="pl-5 pr-4 pt-4 pb-0">
+                          {/* ─── Layout: contenido izquierdo + thumbnail derecho ─── */}
+                          <div className="flex">
 
-                            {/* ─── Fila principal: contenido + caja de ícono ─── */}
-                            <div className="flex gap-3">
+                            {/* Contenido izquierdo */}
+                            <div className="flex-1 min-w-0 pl-5 pr-3 pt-4 pb-0">
 
-                              {/* Contenido izquierdo */}
-                              <div className="flex-1 min-w-0">
-                                {/* Badges */}
-                                <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                              {/* Badges */}
+                              <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                                <span
+                                  className="badge border text-[11px] font-medium"
+                                  style={{ background: `${accentColor}18`, color: accentColor, borderColor: `${accentColor}40` }}
+                                >
+                                  {cfg?.nombre ?? r.tipo_contaminacion}
+                                </span>
+                                <span className={`badge border text-[11px] font-medium ${sevCfg.bg} ${sevCfg.text} ${sevCfg.border}`}>
+                                  {sevCfg.label}
+                                </span>
+                                {iaAnalysis && (
                                   <span
-                                    className="badge border text-[11px] font-medium"
-                                    style={{ background: `${accentColor}18`, color: accentColor, borderColor: `${accentColor}40` }}
+                                    title={`Analisis IA con ${Math.round(iaAnalysis.confianza)}% de confianza`}
+                                    className="badge border text-[10px] font-bold tracking-wider bg-purple-500/15 text-purple-300 border-purple-500/40 inline-flex items-center gap-1"
                                   >
-                                    {cfg?.nombre ?? r.tipo_contaminacion}
+                                    <Sparkles size={10} /> IA
                                   </span>
-                                  <span className={`badge border text-[11px] font-medium ${sevCfg.bg} ${sevCfg.text} ${sevCfg.border}`}>
-                                    {sevCfg.label}
-                                  </span>
-                                  {iaAnalysis && (
-                                    <span
-                                      title={`Analisis IA con ${Math.round(iaAnalysis.confianza)}% de confianza`}
-                                      className="badge border text-[10px] font-bold tracking-wider bg-purple-500/15 text-purple-300 border-purple-500/40 inline-flex items-center gap-1"
-                                    >
-                                      <Sparkles size={10} /> IA
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Título */}
-                                <h3 className="text-sm font-semibold text-gray-100 line-clamp-2 leading-snug mb-1.5 group-hover:text-white transition-colors">
-                                  {r.titulo}
-                                </h3>
-
-                                {/* Descripción (si disponible) */}
-                                {r.descripcion && (
-                                  <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed mb-2">
-                                    {r.descripcion}
-                                  </p>
                                 )}
-
-                                {/* Meta */}
-                                <div className="flex items-center gap-3 text-xs text-gray-600 mb-3">
-                                  {r.municipio && (
-                                    <span className="flex items-center gap-1">
-                                      <MapPin size={10} className="shrink-0" />{r.municipio}
-                                    </span>
-                                  )}
-                                  <span className="flex items-center gap-1">
-                                    <Clock size={10} className="shrink-0" />
-                                    {new Date(r.created_at).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' })}
-                                  </span>
-                                </div>
                               </div>
 
-                              {/* Thumbnail de evidencia o ícono de categoría (solo sm+) */}
-                              <div
-                                className="hidden sm:flex shrink-0 self-start mt-0.5 w-14 h-14 rounded-xl items-center justify-center border overflow-hidden"
-                                style={{
-                                  background: r.primera_imagen ? 'transparent' : `${accentColor}0d`,
-                                  borderColor: `${accentColor}28`,
-                                }}
-                              >
-                                {r.primera_imagen ? (
-                                  <img
-                                    src={r.primera_imagen}
-                                    alt="evidencia"
-                                    className="w-full h-full object-cover rounded-xl"
-                                    onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }}
-                                  />
-                                ) : null}
-                                <div
-                                  className="w-full h-full items-center justify-center rounded-xl"
-                                  style={{ display: r.primera_imagen ? 'none' : 'flex', background: `${accentColor}0d` }}
-                                >
-                                  <CategoryIcon tipo={r.tipo_contaminacion} color={accentColor} size={24} />
+                              {/* Título */}
+                              <h3 className="text-sm font-semibold text-gray-100 line-clamp-2 leading-snug mb-1.5 group-hover:text-white transition-colors">
+                                {r.titulo}
+                              </h3>
+
+                              {/* Descripción */}
+                              {r.descripcion && (
+                                <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed mb-2">
+                                  {r.descripcion}
+                                </p>
+                              )}
+
+                              {/* Meta */}
+                              <div className="flex items-center gap-3 text-xs text-gray-600 mb-3">
+                                {r.municipio && (
+                                  <span className="flex items-center gap-1">
+                                    <MapPin size={10} className="shrink-0" />{r.municipio}
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-1">
+                                  <Clock size={10} className="shrink-0" />
+                                  {new Date(r.created_at).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                </span>
+                              </div>
+
+                              {/* ─── Franja inferior: stepper + acción ─── */}
+                              <div className="flex items-center gap-3 py-2.5 border-t border-gray-800/60 -mx-5 px-5">
+                                <div className="flex-1 min-w-0 overflow-hidden">
+                                  <ReporteStepper estado={estadoSeguimiento} />
+                                </div>
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                  <Link
+                                    to={`/reports/${r.id_reporte}`}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-gray-400 hover:text-green-400 hover:bg-green-500/10 transition-colors"
+                                    title={puedeGestionar ? 'Ver, editar o eliminar' : 'Ver detalle'}
+                                  >
+                                    {puedeGestionar ? (
+                                      <><Pencil size={12} /> Gestionar</>
+                                    ) : (
+                                      <><ExternalLink size={12} /> Ver detalle</>
+                                    )}
+                                  </Link>
                                 </div>
                               </div>
                             </div>
 
-                            {/* ─── Franja inferior: stepper + acciones ─── */}
-                            <div className="flex items-center gap-3 py-2.5 border-t border-gray-800/60 -mx-4 px-4">
-                              {/* Stepper (se estira) */}
-                              <div className="flex-1 min-w-0 overflow-hidden">
-                                <ReporteStepper estado={estadoSeguimiento} />
-                              </div>
-
-                              {/* Acciones — únicamente "Ver detalle". La edición y eliminación viven en la página del reporte. */}
-                              <div className="flex items-center gap-0.5 shrink-0">
-                                <Link
-                                  to={`/reports/${r.id_reporte}`}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-gray-400 hover:text-green-400 hover:bg-green-500/10 transition-colors"
-                                  title={puedeGestionar ? 'Ver, editar o eliminar' : 'Ver detalle'}
-                                >
-                                  {puedeGestionar ? (
-                                    <>
-                                      <Pencil size={12} /> Gestionar
-                                    </>
-                                  ) : (
-                                    <>
-                                      <ExternalLink size={12} /> Ver detalle
-                                    </>
-                                  )}
-                                </Link>
+                            {/* Thumbnail — panel derecho full-height */}
+                            <div className="hidden sm:block shrink-0 w-28 lg:w-36 relative overflow-hidden border-l border-gray-800/60">
+                              {r.primera_imagen ? (
+                                <img
+                                  src={r.primera_imagen}
+                                  alt="evidencia"
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.nextElementSibling.style.display = 'flex';
+                                  }}
+                                />
+                              ) : null}
+                              <div
+                                className="absolute inset-0 items-center justify-center"
+                                style={{ display: r.primera_imagen ? 'none' : 'flex', background: `${accentColor}0d` }}
+                              >
+                                <CategoryIcon tipo={r.tipo_contaminacion} color={accentColor} size={32} />
                               </div>
                             </div>
 
@@ -982,8 +969,8 @@ export default function Profile() {
             </div>
           )}
 
-        </div>
-      </div>
+        </div>{/* end contenido derecho */}
+      </div>{/* end lg:flex */}
 
       {/* Modal de recorte de avatar */}
       <AnimatePresence>
