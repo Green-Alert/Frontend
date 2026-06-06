@@ -61,8 +61,6 @@ api.interceptors.request.use(async (config) => {
     return config;
   }
 
-// Adjunta el token JWT en cada petición si existe
-api.interceptors.request.use((config) => {
   const token = localStorage.getItem('ga_token');
   if (!token) return config;
 
@@ -89,50 +87,22 @@ api.interceptors.request.use((config) => {
 });
 
 // ── Response interceptor: refresco REACTIVO (fallback 401) ────────────────
-  return config;
-});
-
-// Cola de requests que fallaron mientras se refrescaba el token
-let isRefreshing = false;
-let failedQueue = [];
-
-const processQueue = (error, token = null) => {
-  failedQueue.forEach(({ resolve, reject }) => {
-    if (error) reject(error);
-    else resolve(token);
-  });
-  failedQueue = [];
-};
-
-const clearSession = () => {
-  localStorage.removeItem('ga_token');
-  localStorage.removeItem('ga_refresh_token');
-  localStorage.removeItem('ga_user');
-};
-
-// Refresh silencioso: si el access token expiró, renueva automáticamente
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const originalRequest = err.config;
 
-    // Solo intentar refresh en 401 y si no es una request de auth ni ya reintentada
     if (
       err.response?.status === 401 &&
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/refresh') &&
       !originalRequest.url?.includes('/auth/login')
     ) {
-
       if (!localStorage.getItem('ga_refresh_token')) {
-      const refreshToken = localStorage.getItem('ga_refresh_token');
-
-      if (!refreshToken) {
         clearSession();
         return Promise.reject(err);
       }
 
-      // Si ya hay un refresh en curso, encolar esta request
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -150,26 +120,6 @@ api.interceptors.response.use(
         const newToken = await doRefresh();
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         processQueue(null, newToken);
-
-        // Llamada directa con axios para no pasar por este interceptor
-        const { data } = await axios.post(
-          `${api.defaults.baseURL}/auth/refresh`,
-          { refreshToken },
-          { timeout: 8000 }
-        );
-
-        const newAccessToken = data.data.accessToken || data.data.token;
-        const newRefreshToken = data.data.refreshToken;
-
-        localStorage.setItem('ga_token', newAccessToken);
-        if (newRefreshToken) {
-          localStorage.setItem('ga_refresh_token', newRefreshToken);
-        }
-
-        api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-        processQueue(null, newAccessToken);
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
@@ -277,8 +227,6 @@ export const getEntidades = () => api.get('/entidades');
 
 // ── Moderación: asignación de reportes a entidades ──
 export const asignarReporteEntidad = (idReporte, data) => api.post(`/reportes/${idReporte}/asignaciones`, data);
-export const asignarReporteEntidad = (idReporte, data) => api.post(`/reportes/${idReporte}/asignar-entidad`, data);
-
 
 // ── Panel de entidad ──
 export const getMisReportesEntidad          = (params)           => api.get('/entidad/reportes', { params });
