@@ -96,7 +96,7 @@ EXPOSE 8080
 
 # Health check: verifica que nginx sirve el index.html correctamente
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -q --spider http://localhost:8080/ || exit 1
+    CMD curl -f -s http://localhost:8080/ > /dev/null || exit 1
 
 # Comando para arrancar Nginx en primer plano
 CMD ["nginx", "-g", "daemon off;"]

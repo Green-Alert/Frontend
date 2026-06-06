@@ -44,7 +44,7 @@ services:
       # nginx-unprivileged escucha en 8080 → se publica en el puerto 80 del host
       - "80:8080"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/"]
+      test: ["CMD", "curl", "-f", "-s", "http://localhost:8080/"]
       interval: 15s
       timeout: 5s
       start_period: 10s
